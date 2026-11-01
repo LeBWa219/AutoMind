@@ -1437,13 +1437,17 @@ function buildStep(name, fn) {
 async function main() {
   await Promise.all(Object.keys(F).map(function (k) { return figma.loadFontAsync(F[k]); }));
 
-  // пересоздание страницы макета
+  // Пересоздание страницы макета. Figma запрещает удалять страницу,
+  // на которой запущен плагин, поэтому сначала создаём новую страницу
+  // и переключаемся на неё, и только затем удаляем старую.
+  var oldPage = null;
   figma.root.children.forEach(function (p) {
-    if (p.name === PAGE_NAME) p.remove();
+    if (p.name === PAGE_NAME) oldPage = p;
   });
   var page = figma.createPage();
-  page.name = PAGE_NAME;
   figma.currentPage = page;
+  if (oldPage) oldPage.remove();
+  page.name = PAGE_NAME;
   PAGE = page;
 
   buildStep("Дизайн-система", buildDesignSystem);
