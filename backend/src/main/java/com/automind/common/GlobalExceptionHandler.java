@@ -1,5 +1,7 @@
 package com.automind.common;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -13,6 +15,8 @@ import java.util.List;
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     public record FieldError(String field, String message) {
     }
@@ -43,8 +47,15 @@ public class GlobalExceptionHandler {
                 .body(new ApiError(false, "Проверьте корректность заполнения полей", errors));
     }
 
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiError> handleUnreadable(Exception e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiError.of("Некорректный формат запроса (ожидается корректный JSON в UTF-8)"));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleUnexpected(Exception e) {
+        log.error("Непредвиденная ошибка при обработке запроса", e);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiError.of("Внутренняя ошибка сервера"));
     }

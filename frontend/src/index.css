@@ -1,4 +1,29 @@
 @import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+/* Маркеры автомобилей на карте (ТЗ 2.3) */
+.fleet-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 9999px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(23, 28, 25, 0.35);
+  cursor: pointer;
+}
+
+.fleet-marker-selected {
+  width: 32px;
+  height: 32px;
+  font-size: 13px;
+  border-width: 3px;
+}
+
 
 /* Палитра и дизайн-токены AutoMind (ТЗ 2.2, 2.3 + решение п.7) */
 @theme {

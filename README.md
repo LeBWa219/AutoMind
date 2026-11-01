@@ -56,6 +56,26 @@ docker run --rm -v "%cd%/backend/src/main/resources/db/migration:/flyway/sql:ro"
 Параметры подключения: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`
 (дефолты — для локальной разработки, см. `.env.example`).
 
+### Backend (Java 21 + Spring Boot)
+
+```bash
+cd backend
+./mvnw spring-boot:run        # http://localhost:8080, миграции применяются при старте
+```
+
+Сборка исполняемого jar: `./mvnw package -DskipTests`, затем
+`java -jar target/backend-0.0.1-SNAPSHOT.jar`.
+
+### Frontend (React + TypeScript + Vite)
+
+```bash
+cd frontend
+npm install
+npm run dev                   # http://localhost:5173, прокси /api и /ws на backend
+```
+
+Требуется запущенный Docker Desktop (PostgreSQL) и backend на 8080.
+
 ## Тестовый доступ
 
 Код входа: `DEMO-2026` (проверяется на backend, в БД хранится хеш).
