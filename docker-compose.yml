@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: automind-postgres
+    environment:
+      POSTGRES_DB: automind
+      POSTGRES_USER: automind
+      # Пароль dev-базы задаётся в .env (см. .env.example); значение по умолчанию — только для локальной разработки
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-automind_dev}
+    ports:
+      # 5432/5433 заняты локальным PostgreSQL на машине разработчика — используем 5434
+      - "5434:5432"
+    volumes:
+      - automind_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U automind -d automind"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  automind_pgdata:

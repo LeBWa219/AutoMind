@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: automind
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5434}/${DB_NAME:automind}
+    username: ${DB_USER:automind}
+    # Dev-дефолт; в окружениях пароль приходит через переменные окружения
+    password: ${DB_PASSWORD:automind_dev}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+server:
+  port: 8080
+
+logging:
+  level:
+    com.automind: INFO

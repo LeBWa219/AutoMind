@@ -34,6 +34,28 @@
 - Backend: Java 21 + Spring Boot *(подтверждается перед стартом этапа 2)*
 - БД: PostgreSQL + Flyway-миграции, развёртывание Docker Compose
 
+## Запуск
+
+### База данных (PostgreSQL в Docker)
+
+```bash
+docker compose up -d        # PostgreSQL 16 на порту 5434
+```
+
+Миграции Flyway применяются автоматически при старте backend. Для ручной
+проверки без backend:
+
+```bash
+docker run --rm -v "%cd%/backend/src/main/resources/db/migration:/flyway/sql:ro" flyway/flyway:10 ^
+  -url="jdbc:postgresql://host.docker.internal:5434/automind" -user=automind -password=automind_dev migrate
+```
+
+Порты 5432/5433 на машине разработчика заняты локальным PostgreSQL, поэтому
+контейнер публикуется на **5434** (переопределяется переменной `DB_PORT`).
+
+Параметры подключения: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`
+(дефолты — для локальной разработки, см. `.env.example`).
+
 ## Тестовый доступ
 
 Код входа: `DEMO-2026` (проверяется на backend, в БД хранится хеш).
