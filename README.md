@@ -17,7 +17,7 @@
 | Этап (ТЗ §11) | Состояние |
 |---|---|
 | 1. Анализ существующего проекта | — (старт с нуля) |
-| 0. Макет интерфейса (вне ТЗ) | Figma-плагин `figma-plugin/` — 10 экранов |
+| Макет интерфейса | Отменён по решению заказчика — дизайн правится вживую на сайте |
 | 2. База данных + миграции | ⏳ далее |
 | 3. Авторизация | ⏳ |
 | 4. Мониторинг транспорта | ⏳ |
@@ -25,18 +25,14 @@
 | 6. AI Logistics Copilot | ⏳ |
 | 7. Интеграция и тестирование | ⏳ |
 
-Проектные решения по недочётам ТЗ: [docs/PROJECT_DECISIONS.md](docs/PROJECT_DECISIONS.md).
+Проектные решения по недочётам ТЗ (палитра, статусы, формулы оценок):
+[docs/PROJECT_DECISIONS.md](docs/PROJECT_DECISIONS.md).
 
 ## Технологии (ТЗ §8.6)
 
 - Frontend: React + TypeScript, Tailwind CSS, Leaflet, WebSocket
 - Backend: Java 21 + Spring Boot *(подтверждается перед стартом этапа 2)*
 - БД: PostgreSQL + Flyway-миграции, развёртывание Docker Compose
-
-## Макет в Figma
-
-Экраны генерируются плагином из `figma-plugin/` — см. инструкцию в
-[figma-plugin/README.md](figma-plugin/README.md).
 
 ## Тестовый доступ
 
