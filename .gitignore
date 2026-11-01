@@ -1,0 +1,29 @@
+# Node / frontend
+node_modules/
+dist/
+build/
+*.local
+
+# Java / backend
+target/
+*.class
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+
+# Docker / env
+.env
+.env.*
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Misc
+*.log
+__pycache__/
