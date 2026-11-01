@@ -45,6 +45,11 @@ setTimeout(() => {
   console.log("Создано узлов:", figmaMock._count);
   console.log("Корневых фреймов на странице:", page.children.length);
   names.forEach(n => console.log("  ·", n));
+  const errors = names.filter(n => String(n).startsWith("ОШИБКА"));
+  if (errors.length) {
+    console.error("FAIL: генерация с ошибками:", errors.join("; "));
+    process.exit(1);
+  }
   if (page.children.length !== 10) {
     console.error("FAIL: ожидалось 10 корневых фреймов");
     process.exit(1);
