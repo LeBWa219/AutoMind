@@ -10,4 +10,6 @@ public interface TripRepository extends JpaRepository<TripEntity, Long> {
     List<TripEntity> findByDriverIdOrderByTripDateDesc(Long driverId, Pageable pageable);
 
     List<TripEntity> findByDriverIdOrderByTripDateDesc(Long driverId);
+
+    List<TripEntity> findByDriverIdAndStatusOrderByTripDateDesc(Long driverId, String status, Pageable pageable);
 }
