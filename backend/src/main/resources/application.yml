@@ -20,6 +20,13 @@ spring:
 
 server:
   port: 8080
+  servlet:
+    session:
+      cookie:
+        http-only: true
+        same-site: lax
+        name: AUTOMIND_SESSION
+      timeout: 8h
 
 logging:
   level:

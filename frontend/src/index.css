@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+/* Палитра и дизайн-токены AutoMind (ТЗ 2.2, 2.3 + решение п.7) */
+@theme {
+  --color-automind-accent: #a8d5a2; /* светло-зелёный — акценты */
+  --color-automind-dark: #174d35; /* тёмно-зелёный — навигация, кнопки */
+  --color-automind-ink: #171c19; /* почти чёрный — текст */
+  --color-automind-warn: #e6a23c; /* предупреждения, экономика */
+  --color-automind-bg: #f5f7f4; /* основной фон */
+  --color-automind-gray: #8a948d; /* второстепенное */
+  --color-automind-red: #d9534f; /* критично (решение п.7) */
+  --color-automind-status-green: #4e9b54; /* штатная работа */
+  --color-automind-status-yellow: #e6c86e; /* предупреждение */
+}
+
+body {
+  @apply bg-automind-bg text-automind-ink antialiased;
+  font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+}
