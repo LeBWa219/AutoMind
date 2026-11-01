@@ -7,6 +7,7 @@ import { MonitoringPage } from './pages/MonitoringPage'
 import { OrdersPage } from './pages/OrdersPage'
 import { OrderFormPage } from './pages/OrderFormPage'
 import { OrderResultsPage } from './pages/OrderResultsPage'
+import { CopilotPage } from './pages/CopilotPage'
 
 type View = 'home' | 'monitoring' | 'orders' | 'order-form' | 'order-results' | 'copilot'
 
@@ -47,6 +48,7 @@ export default function App() {
   const [checking, setChecking] = useState(true)
   const [view, setView] = useState<View>('home')
   const [activeOrderId, setActiveOrderId] = useState<number | null>(null)
+  const [copilotOrderId, setCopilotOrderId] = useState<number | null>(null)
 
   // Проверка активной сессии при загрузке (ТЗ 3.2)
   useEffect(() => {
@@ -130,22 +132,22 @@ export default function App() {
           <OrderResultsPage
             orderId={activeOrderId}
             onBack={() => setView('orders')}
-            onAskCopilot={() => setView('copilot')}
+            onAskCopilot={() => {
+            setCopilotOrderId(activeOrderId)
+            setView('copilot')
+          }}
           />
         )}
-        {view === 'copilot' && <Placeholder title="AI Logistics Copilot" stage="Этап 6" />}
+        {view === 'copilot' && (
+        <CopilotPage
+          initialOrderId={copilotOrderId}
+          onOpenResults={(id) => {
+            setActiveOrderId(id)
+            setView('order-results')
+          }}
+        />
+      )}
       </div>
     </ErrorBoundary>
-  )
-}
-
-function Placeholder({ title, stage }: { title: string; stage: string }) {
-  return (
-    <div className="flex h-[calc(100vh-64px)] items-center justify-center">
-      <div className="rounded-2xl bg-white p-10 text-center shadow-sm">
-        <p className="text-[17px] font-semibold">{title}</p>
-        <p className="mt-1.5 text-[13px] text-automind-gray">Раздел будет реализован на {stage.toLowerCase()}е проекта.</p>
-      </div>
-    </div>
   )
 }
