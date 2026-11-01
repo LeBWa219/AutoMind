@@ -421,21 +421,20 @@ public class OrderService {
             c.fuelRateSource = "VEHICLE_NORM";
         }
 
-        // --- Формулы ТЗ 5.5 (BigDecimal, HALF_UP) ---
-        BigDecimal fuelVolume = totalDistance.multiply(c.fuelRateUsed).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
-        c.fuelCost = fuelVolume.multiply(params.fuelPrice()).setScale(2, RoundingMode.HALF_UP);
-        c.driverCost = order.getPlannedDuration().multiply(params.driverHourlyRate()).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal maintenanceCost = totalDistance.multiply(params.maintenanceRate()).setScale(2, RoundingMode.HALF_UP);
-        c.maintenanceCost = maintenanceCost;
+        // --- Формулы ТЗ 5.5 (BigDecimal, HALF_UP) — вынесены в EconomyCalculator ---
+        var costs = EconomyCalculator.calculate(order.getLoadedDistance(), order.getEmptyDistance(),
+                c.fuelRateUsed, params.fuelPrice(), order.getPlannedDuration(), params.driverHourlyRate(),
+                params.maintenanceRate(), params.tollCost(), params.additionalCost(), params.otherCost(),
+                order.getRevenue());
+        c.fuelCost = costs.fuelCost();
+        c.driverCost = costs.driverCost();
+        c.maintenanceCost = costs.maintenanceCost();
         c.tollCost = params.tollCost();
         c.additionalCost = params.additionalCost();
         c.otherCost = params.otherCost();
-        c.totalCost = c.fuelCost.add(c.driverCost).add(maintenanceCost)
-                .add(params.tollCost()).add(params.additionalCost()).add(params.otherCost())
-                .setScale(2, RoundingMode.HALF_UP);
-        c.profit = order.getRevenue().subtract(c.totalCost).setScale(2, RoundingMode.HALF_UP);
-        c.profitability = order.getRevenue().compareTo(BigDecimal.ZERO) == 0 ? BigDecimal.ZERO
-                : c.profit.multiply(BigDecimal.valueOf(100)).divide(order.getRevenue(), 2, RoundingMode.HALF_UP);
+        c.totalCost = costs.totalCost();
+        c.profit = costs.profit();
+        c.profitability = costs.profitability();
 
         // Значения критериев для нормализации (меньше — лучше, кроме надёжности)
         c.criteria.put("ECONOMIC", c.totalCost.doubleValue());

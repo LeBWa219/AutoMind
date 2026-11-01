@@ -6,76 +6,77 @@
 Три модуля на едином наборе данных:
 
 1. **Мониторинг транспорта** — карта (Leaflet), автомобили и водители (CRUD),
-   симуляция телеметрии GPS/ГЛОНАСС на backend, история рейсов, ДТП и штрафов.
-2. **Экономика перевозок** — заказы, расчёт себестоимости, сравнение и
-   ранжирование водителей (экономика + эксплуатационный риск), назначение.
-3. **AI Logistics Copilot** — чат-помощник (заглушка с шаблонами на основе
-   реальных данных расчёта; архитектура под будущую LLM).
+   симуляция телеметрии GPS/ГЛОНАСС на backend (WebSocket + fallback-опрос),
+   история рейсов, ДТП и штрафов.
+2. **Экономика перевозок** — заказы, расчёт себестоимости на `BigDecimal`
+   (формулы ТЗ 5.5), сравнение и ранжирование водителей (отсев ограничений →
+   нормализованная оценка 0–100 с весами из БД), назначение ответственного.
+3. **AI Logistics Copilot** — чат-помощник (заглушка, отвечающая по реальному
+   контексту расчёта из БД; архитектура под будущую LLM).
 
-## Статус
+## Статус: MVP реализован полностью (этапы 1–7 ТЗ §11)
 
-| Этап (ТЗ §11) | Состояние |
+| Критерий приёмки (ТЗ §12) | Состояние |
 |---|---|
-| 1. Анализ существующего проекта | — (старт с нуля) |
-| Макет интерфейса | Отменён по решению заказчика — дизайн правится вживую на сайте |
-| 2. База данных + миграции | ⏳ далее |
-| 3. Авторизация | ⏳ |
-| 4. Мониторинг транспорта | ⏳ |
-| 5. Экономический модуль | ⏳ |
-| 6. AI Logistics Copilot | ⏳ |
-| 7. Интеграция и тестирование | ⏳ |
+| 12.1 Авторизация по коду, сессии, защита API | ✅ |
+| 12.2 Мониторинг: списки, CRUD, карта, движение, телеметрия, 5 рейсов, ДТП | ✅ |
+| 12.3 Экономика: заказ, валидация, расчёт, сравнение, назначение, сохранение | ✅ |
+| 12.4 AI-помощник: чат, контекст заказа, объяснения, без выдуманных цифр | ✅ |
+| 12.5 БД: миграции, связи, тестовые данные, запуск на чистой базе | ✅ |
+| 12.6 Сквозной сценарий диспетчера без ручного вмешательства в БД | ✅ пройден на чистой базе |
 
-Проектные решения по недочётам ТЗ (палитра, статусы, формулы оценок):
-[docs/PROJECT_DECISIONS.md](docs/PROJECT_DECISIONS.md).
+Проектные решения по недочётам ТЗ: [docs/PROJECT_DECISIONS.md](docs/PROJECT_DECISIONS.md).
 
 ## Технологии (ТЗ §8.6)
 
-- Frontend: React + TypeScript, Tailwind CSS, Leaflet, WebSocket
-- Backend: Java 21 + Spring Boot *(подтверждается перед стартом этапа 2)*
-- БД: PostgreSQL + Flyway-миграции, развёртывание Docker Compose
+- Frontend: React 19 + TypeScript, Vite, Tailwind CSS 4, Leaflet, WebSocket
+- Backend: Java 21, Spring Boot 4, Spring Security, Spring Data JPA (Hibernate)
+- БД: PostgreSQL 16 + Flyway (7 миграций), развёртывание Docker Compose
+- Тесты: JUnit 5 — модульные тесты формул расчёта (`EconomyCalculatorTest`)
+
+## Структура репозитория
+
+```
+AutoMind/
+  backend/            Spring Boot: com.automind.{auth, fleet, trip, telemetry,
+                      economy, order, assistant, common, config}
+    src/main/resources/db/migration/   Flyway V1–V7 (таблицы, связи, индексы,
+                                       ограничения, настройки, код доступа, данные)
+  frontend/           React + TS: pages (Login, Home, Monitoring, Orders,
+                      OrderForm, OrderResults, Copilot), api-клиенты, hooks
+  docker-compose.yml  PostgreSQL 16 (порт 5434)
+  docs/               проектные документы
+```
 
 ## Запуск
 
-### База данных (PostgreSQL в Docker)
+Требования: Docker Desktop, JDK 21, Node 18+.
 
 ```bash
-docker compose up -d        # PostgreSQL 16 на порту 5434
+# 1. База данных
+docker compose up -d                    # PostgreSQL на 5434
+
+# 2. Backend (миграции и тестовые данные применяются автоматически)
+cd backend && ./mvnw spring-boot:run    # http://localhost:8080
+
+# 3. Frontend
+cd frontend && npm install && npm run dev   # http://localhost:5173
 ```
 
-Миграции Flyway применяются автоматически при старте backend. Для ручной
-проверки без backend:
+Вход: код `DEMO-2026` (проверяется на backend, в БД — BCrypt-хеш).
 
-```bash
-docker run --rm -v "%cd%/backend/src/main/resources/db/migration:/flyway/sql:ro" flyway/flyway:10 ^
-  -url="jdbc:postgresql://host.docker.internal:5434/automind" -user=automind -password=automind_dev migrate
-```
+Тесты backend: `cd backend && ./mvnw test`.
 
 Порты 5432/5433 на машине разработчика заняты локальным PostgreSQL, поэтому
 контейнер публикуется на **5434** (переопределяется переменной `DB_PORT`).
-
 Параметры подключения: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`
 (дефолты — для локальной разработки, см. `.env.example`).
 
-### Backend (Java 21 + Spring Boot)
+## Демо-сценарий (ТЗ 12.6)
 
-```bash
-cd backend
-./mvnw spring-boot:run        # http://localhost:8080, миграции применяются при старте
-```
-
-Сборка исполняемого jar: `./mvnw package -DskipTests`, затем
-`java -jar target/backend-0.0.1-SNAPSHOT.jar`.
-
-### Frontend (React + TypeScript + Vite)
-
-```bash
-cd frontend
-npm install
-npm run dev                   # http://localhost:5173, прокси /api и /ws на backend
-```
-
-Требуется запущенный Docker Desktop (PostgreSQL) и backend на 8080.
-
-## Тестовый доступ
-
-Код входа: `DEMO-2026` (проверяется на backend, в БД хранится хеш).
+Войти → «Мониторинг» → выбрать автомобиль → водитель, телеметрия, поездки, ДТП →
+«Экономика перевозок» → «Создать заказ» → заполнить и «Рассчитать себестоимость» →
+сравнительная таблица кандидатов с рисками и обоснованием оценки → «AI Copilot» →
+спросить «Кого лучше отправить?» → назначить водителя. Данные для демонстрации
+кейса «дешевле ≠ лучше» зашиты в миграцию V7 (экономичный водитель с ДТП,
+чистая история, повышенный расход и т. д.).
