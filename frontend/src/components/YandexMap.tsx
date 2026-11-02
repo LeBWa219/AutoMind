@@ -43,6 +43,16 @@ export function transportIcon(vehicle: Vehicle): string {
   return '🚚'
 }
 
+/** Корректные границы для setBounds: прямоугольник из двух угловых точек. */
+function boundsOf(coords: [number, number][]): [[number, number], [number, number]] {
+  let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180
+  for (const [lat, lng] of coords) {
+    minLat = Math.min(minLat, lat); maxLat = Math.max(maxLat, lat)
+    minLng = Math.min(minLng, lng); maxLng = Math.max(maxLng, lng)
+  }
+  return [[minLat, minLng], [maxLat, maxLng]]
+}
+
 /** Ближайшая точка на полилинии — прижимаем маркер к реальной дороге. */
 function nearestOnPolyline(pt: [number, number], coords: [number, number][]): [number, number] {
   let best: [number, number] = coords[0]
@@ -165,21 +175,13 @@ export function YandexMap({ vehicles, routes, telemetry, selectedId, onSelect, o
     if (!map) return
     const geom = realGeometryRef.current.get(vehicleId)
     if (geom && geom.length > 1) {
-      let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180
-      for (const [lat, lng] of geom) {
-        minLat = Math.min(minLat, lat); maxLat = Math.max(maxLat, lat)
-        minLng = Math.min(minLng, lng); maxLng = Math.max(maxLng, lng)
-      }
-      map.setBounds(
-        [[minLat, minLng], [maxLat, maxLng]],
-        { checkZoomRange: true, zoomMargin: 40, duration: 400 },
-      )
+      map.setBounds(boundsOf(geom), { checkZoomRange: true, zoomMargin: 40, duration: 400 })
       return
     }
     const route = propsRef.current.routes.find((r) => r.vehicleId === vehicleId)
     if (route && route.points.length) {
       map.setBounds(
-        route.points.map((p) => [p.lat, p.lng]),
+        boundsOf(route.points.map((p) => [p.lat, p.lng] as [number, number])),
         { checkZoomRange: true, zoomMargin: 40, duration: 400 },
       )
       return
@@ -197,7 +199,7 @@ export function YandexMap({ vehicles, routes, telemetry, selectedId, onSelect, o
       const all: [number, number][] = []
       realGeometryRef.current.forEach((geom) => all.push(...geom))
       if (all.length > 1) {
-        map.setBounds(all, { checkZoomRange: true, zoomMargin: 40, duration: 400 })
+        map.setBounds(boundsOf(all), { checkZoomRange: true, zoomMargin: 40, duration: 400 })
       }
       return
     }
