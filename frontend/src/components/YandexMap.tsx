@@ -19,6 +19,21 @@ declare global {
   }
 }
 
+/** Реальная дорожная геометрия через OSRM — открытый маршрутизатор на данных OpenStreetMap, без ключа. */
+async function fetchOsrmGeometry(pts: [number, number][]): Promise<[number, number][]> {
+  const waypoints = pts.map(([lat, lng]) => `${lng},${lat}`).join(";")
+  const res = await fetch(
+    `https://router.project-osrm.org/route/v1/driving/${waypoints}?overview=full&geometries=geojson`,
+  )
+  const body = await res.json()
+  const coords = body?.routes?.[0]?.geometry?.coordinates
+  if (body?.code !== "Ok" || !Array.isArray(coords) || coords.length < 2) {
+    throw new Error(body?.message || "OSRM не вернул геометрию")
+  }
+  // GeoJSON-порядок [долгота, широта] -> [широта, долгота]
+  return coords.map((c: [number, number]) => [c[1], c[0]])
+}
+
 /** Реальная дорожная геометрия через HTTP Роутинг API (ключ типа «Маршрутизатор»). */
 async function fetchRoadGeometry(pts: [number, number][], routerKey: string): Promise<[number, number][]> {
   const wp = pts.map(([lat, lng]) => `${lat},${lng}`).join("|")
@@ -153,49 +168,55 @@ export function YandexMap({ vehicles, routes, telemetry, selectedId, onSelect, o
       if (routingRef.current.has(route.vehicleId) || route.points.length < 2) continue
       routingRef.current.add(route.vehicleId)
       const pts: [number, number][] = route.points.map((p) => [p.lat, p.lng])
-      ymaps
-        .route(pts, { routingMode: 'auto', mapStateAutoApply: false })
-        .then((r: any) => {
-          if (!mapRef.current) return
-          try {
-            r.options.set({ strokeColor: '#174D35', strokeWidth: 4, strokeOpacity: 0.75, strokeStyle: 'solid' })
-            r.getWayPoints().each((wp: any) => wp.options.set('visible', false))
-          } catch {
-            /* оформление не критично */
-          }
-          mapRef.current.geoObjects.add(r)
-          const coords: [number, number][] = []
-          r.getPaths().each((path: any) => {
-            path.getSegments().each((seg: any) => {
-              for (const c of seg.geometry.getCoordinates()) coords.push([c[0], c[1]])
-            })
-          })
-          if (coords.length > 1) realGeometryRef.current.set(route.vehicleId, coords)
-          if (propsRef.current.selectedId === route.vehicleId) zoomToRoute(route.vehicleId)
-        })
+      // Цепочка источников дорожной геометрии: OSRM (бесплатный, без ключа) ->
+      // маршрутизатор JS API -> HTTP Роутинг API Яндекса -> прямые линии.
+      const drawStraight = () => {
+        if (!mapRef.current) return
+        mapRef.current.geoObjects.add(
+          new ymaps.Polyline(pts, {}, { strokeColor: '#174D35', strokeWidth: 3, strokeStyle: 'dash', strokeOpacity: 0.55 }),
+        )
+      }
+      const applyGeometry = (geom: [number, number][]) => {
+        if (!mapRef.current) return
+        realGeometryRef.current.set(route.vehicleId, geom)
+        mapRef.current.geoObjects.add(
+          new ymaps.Polyline(geom, {}, { strokeColor: '#174D35', strokeWidth: 4, strokeOpacity: 0.75 }),
+        )
+        if (propsRef.current.selectedId === route.vehicleId) zoomToRoute(route.vehicleId)
+      }
+      fetchOsrmGeometry(pts)
+        .then(applyGeometry)
         .catch(() => {
-          // JS-маршрутизатор недоступен — пробуем HTTP Роутинг API с ключом «Маршрутизатор»
-          const routerKey = import.meta.env.VITE_YANDEX_ROUTER_KEY as string | undefined
-          const drawStraight = () => {
-            if (!mapRef.current) return
-            mapRef.current.geoObjects.add(
-              new ymaps.Polyline(pts, {}, { strokeColor: '#174D35', strokeWidth: 3, strokeStyle: 'dash', strokeOpacity: 0.55 }),
-            )
-          }
-          if (!routerKey) {
-            drawStraight()
-            return
-          }
-          fetchRoadGeometry(pts, routerKey)
-            .then((geom) => {
+          if (!mapRef.current) return
+          ymaps
+            .route(pts, { routingMode: 'auto', mapStateAutoApply: false })
+            .then((r: any) => {
               if (!mapRef.current) return
-              realGeometryRef.current.set(route.vehicleId, geom)
-              mapRef.current.geoObjects.add(
-                new ymaps.Polyline(geom, {}, { strokeColor: '#174D35', strokeWidth: 4, strokeOpacity: 0.75 }),
-              )
-              if (propsRef.current.selectedId === route.vehicleId) zoomToRoute(route.vehicleId)
+              try {
+                r.options.set({ strokeColor: '#174D35', strokeWidth: 4, strokeOpacity: 0.75, strokeStyle: 'solid' })
+                r.getWayPoints().each((wp: any) => wp.options.set('visible', false))
+              } catch {
+                /* оформление не критично */
+              }
+              mapRef.current.geoObjects.add(r)
+              const coords: [number, number][] = []
+              r.getPaths().each((path: any) => {
+                path.getSegments().each((seg: any) => {
+                  for (const c of seg.geometry.getCoordinates()) coords.push([c[0], c[1]])
+                })
+              })
+              if (coords.length > 1) applyGeometry(coords)
             })
-            .catch(drawStraight)
+            .catch(() => {
+              const routerKey = import.meta.env.VITE_YANDEX_ROUTER_KEY as string | undefined
+              if (!routerKey) {
+                drawStraight()
+                return
+              }
+              fetchRoadGeometry(pts, routerKey)
+                .then(applyGeometry)
+                .catch(drawStraight)
+            })
         })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -305,5 +326,12 @@ export function YandexMap({ vehicles, routes, telemetry, selectedId, onSelect, o
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [telemetry, vehicles, selectedId, mapRef.current, ymapsRef.current])
 
-  return <div ref={containerRef} className="h-full w-full rounded-xl" />
+  return (
+    <div className="relative h-full w-full rounded-xl">
+      <div ref={containerRef} className="h-full w-full" />
+      <div className="pointer-events-none absolute bottom-1 left-2 z-[500] text-[9px] text-automind-gray">
+        Маршруты: OSRM · © OpenStreetMap contributors
+      </div>
+    </div>
+  )
 }
