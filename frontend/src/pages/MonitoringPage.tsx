@@ -28,6 +28,8 @@ export function MonitoringPage() {
     driver: null,
   })
   const [mapFailed, setMapFailed] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [panelOpen, setPanelOpen] = useState(false)
   const yandexKey = import.meta.env.VITE_YANDEX_MAPS_KEY as string | undefined
 
   const { telemetry, mode } = useTelemetryStream(true)
@@ -64,9 +66,15 @@ export function MonitoringPage() {
   const filteredDrivers = drivers.filter((d) => d.fullName.toLowerCase().includes(search.toLowerCase()))
 
   return (
-    <div className="flex h-[calc(100vh-64px)]">
+    <div className="relative flex h-[calc(100vh-64px)] flex-col lg:flex-row">
       {/* Боковая панель управления (ТЗ 4.3) */}
-      <aside className="flex w-[280px] shrink-0 flex-col gap-3.5 border-r border-automind-gray/20 bg-white p-4">
+      <aside
+        className={`${sidebarOpen ? "flex" : "hidden"} absolute inset-y-0 left-0 z-30 w-[86%] max-w-[320px] shrink-0 flex-col gap-3.5 border-r border-automind-gray/20 bg-white p-4 shadow-xl lg:static lg:z-auto lg:flex lg:w-[280px] lg:shadow-none`}
+      >
+        <div className="flex items-center justify-between lg:hidden">
+          <span className="text-[13px] font-semibold">Панель управления</span>
+          <button onClick={() => setSidebarOpen(false)} className="text-automind-gray hover:text-automind-ink">✕</button>
+        </div>
         <div className="flex rounded-lg bg-automind-bg p-1">
           {(
             [
@@ -114,7 +122,7 @@ export function MonitoringPage() {
               return (
                 <button
                   key={v.id}
-                  onClick={() => setSelectedId(v.id)}
+                  onClick={() => { setSelectedId(v.id); setPanelOpen(true) }}
                   className={`flex items-center justify-between rounded-lg px-2.5 py-2 text-left ${
                     selectedId === v.id ? 'bg-automind-accent/25 ring-1 ring-automind-accent' : 'hover:bg-automind-bg'
                   }`}
@@ -138,7 +146,7 @@ export function MonitoringPage() {
               <button
                 key={d.id}
                 onClick={() => {
-                  if (d.vehicle) setSelectedId(d.vehicle.id)
+                  if (d.vehicle) { setSelectedId(d.vehicle.id); setPanelOpen(true) }
                 }}
                 className="rounded-lg px-2.5 py-2 text-left hover:bg-automind-bg"
               >
@@ -195,8 +203,17 @@ export function MonitoringPage() {
 
       {/* Центральная область: интерактивная карта (ТЗ 4.6) */}
       <main className="flex min-w-0 flex-1 flex-col gap-2.5 p-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-[19px] font-semibold">Мониторинг транспорта</h1>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="rounded-lg border border-automind-gray/40 px-2.5 py-1.5 text-[13px] lg:hidden"
+              title="Панель управления"
+            >
+              ☰
+            </button>
+            <h1 className="text-[17px] sm:text-[19px] font-semibold">Мониторинг транспорта</h1>
+          </div>
           <span className="flex items-center gap-1.5 text-[11px] text-automind-gray">
             <span
               className={`size-2 rounded-full ${mode === 'websocket' ? 'bg-automind-status-green' : mode === 'polling' ? 'bg-automind-warn' : 'bg-automind-gray'}`}
@@ -211,7 +228,7 @@ export function MonitoringPage() {
               routes={routes}
               telemetry={telemetry}
               selectedId={selectedId}
-              onSelect={setSelectedId}
+              onSelect={(id) => { setSelectedId(id); setPanelOpen(true) }}
               onFail={() => setMapFailed(true)}
             />
           ) : (
@@ -220,14 +237,20 @@ export function MonitoringPage() {
               routes={routes}
               telemetry={telemetry}
               selectedId={selectedId}
-              onSelect={setSelectedId}
+              onSelect={(id) => { setSelectedId(id); setPanelOpen(true) }}
             />
           )}
         </div>
       </main>
 
       {/* Правая информационная панель (ТЗ 4.8) */}
-      <aside className="w-[320px] shrink-0 border-l border-automind-gray/20 bg-automind-bg">
+      <aside
+        className={`${panelOpen ? "flex" : "hidden"} absolute inset-y-0 right-0 z-30 w-[88%] max-w-[360px] shrink-0 flex-col border-l border-automind-gray/20 bg-automind-bg shadow-xl lg:static lg:z-auto lg:flex lg:w-[320px] lg:shadow-none`}
+      >
+        <div className="flex items-center justify-between px-4 pt-3 lg:hidden">
+          <span className="text-[13px] font-semibold">Информация</span>
+          <button onClick={() => setPanelOpen(false)} className="text-automind-gray hover:text-automind-ink">✕</button>
+        </div>
         <VehicleInfoPanel vehicleId={selectedId} telemetry={selectedId ? telemetry.get(selectedId) : undefined} />
       </aside>
 

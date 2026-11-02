@@ -17,8 +17,8 @@ export function OrdersPage({
   }, [])
 
   return (
-    <main className="mx-auto max-w-[1200px] px-8 py-7">
-      <div className="flex items-center justify-between">
+    <main className="mx-auto max-w-[1200px] px-4 py-6 sm:px-8 sm:py-7">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Экономика перевозок</h1>
           <p className="mt-1 text-[13px] text-automind-gray">
@@ -35,8 +35,8 @@ export function OrdersPage({
 
       {error && <p className="mt-4 text-[13px] text-automind-red">{error}</p>}
 
-      <div className="mt-5 overflow-hidden rounded-xl bg-white p-2 shadow-sm">
-        <table className="w-full text-[12px]">
+      <div className="mt-5 overflow-x-auto rounded-xl bg-white p-2 shadow-sm">
+        <table className="w-full min-w-[980px] text-[12px]">
           <thead>
             <tr className="bg-automind-bg text-left text-[10px] uppercase tracking-wider text-automind-gray">
               <th className="rounded-l-lg px-3 py-2.5 font-semibold">№</th>

@@ -71,7 +71,7 @@ export default function App() {
     <ErrorBoundary>
       <ConsentBanner />
       <div className="min-h-screen">
-        <header className="flex h-16 items-center justify-between border-b border-automind-gray/20 bg-white px-6">
+        <header className="flex h-16 items-center justify-between gap-2 border-b border-automind-gray/20 bg-white px-4 sm:px-6">
           <div className="flex items-center gap-6">
             <button onClick={() => setView('home')} className="flex items-center gap-2.5">
               <span className="flex size-7 items-center justify-center rounded-lg bg-automind-dark text-sm font-bold text-automind-accent">
@@ -79,7 +79,7 @@ export default function App() {
               </span>
               <span className="text-lg font-semibold">AutoMind</span>
             </button>
-            <nav className="flex gap-1">
+            <nav className="flex gap-1 overflow-x-auto sm:overflow-visible">
               {(Object.keys(navLabels) as View[]).map((v) => (
                 <button
                   key={v}
@@ -93,12 +93,12 @@ export default function App() {
               ))}
             </nav>
           </div>
-          <div className="flex items-center gap-3.5">
-            <span className="flex items-center gap-1.5 rounded-full bg-automind-bg px-3 py-1.5 text-[12px] text-automind-gray">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3.5">
+            <span className="hidden items-center gap-1.5 rounded-full bg-automind-bg px-3 py-1.5 text-[12px] text-automind-gray md:flex">
               <span className="size-2 rounded-full bg-automind-status-green" />
               Система работает
             </span>
-            <span className="text-[13px] font-medium">
+            <span className="hidden text-[13px] font-medium sm:inline">
               {user.role === 'DISPATCHER' ? 'Диспетчер' : user.role} · #{user.id}
             </span>
             <button

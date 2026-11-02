@@ -136,7 +136,7 @@ export function OrderFormPage({
   }
 
   return (
-    <main className="mx-auto max-w-[1100px] px-8 py-7">
+    <main className="mx-auto max-w-[1100px] px-4 py-6 sm:px-8 sm:py-7">
       <button onClick={onCancel} className="text-[12px] text-automind-gray hover:text-automind-ink">
         ← К списку заказов
       </button>
@@ -147,7 +147,7 @@ export function OrderFormPage({
         <section className="rounded-xl bg-white p-5 shadow-sm">
           <h2 className="text-[15px] font-semibold">Основная информация</h2>
           <p className="mt-0.5 text-[11px] text-automind-gray">Поля со звёздочкой обязательны (ТЗ 5.3.1)</p>
-          <div className="mt-4 grid grid-cols-2 gap-3.5">
+          <div className="mt-4 grid grid-cols-1 gap-3.5 sm:grid-cols-2">
             <Labeled label="Название заказа *">
               <input value={form.orderName} onChange={(e) => set('orderName')(e.target.value)} className={inputCls} />
             </Labeled>
@@ -206,7 +206,7 @@ export function OrderFormPage({
         {/* 5.3.2 Маршрут */}
         <section className="rounded-xl bg-white p-5 shadow-sm">
           <h2 className="text-[15px] font-semibold">Маршрут</h2>
-          <div className="mt-4 grid grid-cols-3 gap-3.5">
+          <div className="mt-4 grid grid-cols-1 gap-3.5 sm:grid-cols-3">
             <Labeled label="Начальный адрес *" error={fieldErrors.origin}>
               <input value={form.origin} onChange={(e) => set('origin')(e.target.value)} className={inputCls} />
             </Labeled>
@@ -256,7 +256,7 @@ export function OrderFormPage({
             Загружены из настроек компании, можно скорректировать. Пустое поле не считается нулём —
             укажите 0 явно, если параметр не применяется (ТЗ 5.3.3).
           </p>
-          <div className="mt-4 grid grid-cols-3 gap-3.5">
+          <div className="mt-4 grid grid-cols-1 gap-3.5 sm:grid-cols-3">
             <Labeled label="Выручка за заказ, ₽ *" error={fieldErrors.revenue}>
               <input
                 type="number"

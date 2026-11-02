@@ -42,3 +42,26 @@ body {
   @apply bg-automind-bg text-automind-ink antialiased;
   font-family: "Inter", "Segoe UI", system-ui, sans-serif;
 }
+
+/* Маркеры-иконки транспорта на Яндекс Картах (стиль навигатора) */
+.vehicle-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: #fff;
+  border: 3px solid #174d35;
+  font-size: 19px;
+  line-height: 1;
+  box-shadow: 0 1px 6px rgba(23, 28, 25, 0.35);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.vehicle-marker.selected {
+  transform: scale(1.22);
+  box-shadow: 0 0 0 3px rgba(23, 77, 53, 0.4), 0 2px 10px rgba(23, 28, 25, 0.4);
+  z-index: 10;
+}

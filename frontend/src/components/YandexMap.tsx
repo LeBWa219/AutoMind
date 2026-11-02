@@ -35,10 +35,38 @@ function loadYmaps(key: string): Promise<any> {
   return window.__ymapsLoading
 }
 
+/** Иконка транспорта по типу ТС: фура 🚛, грузовик 🚚, фургон 🚐 (ТЗ 4.4). */
+export function transportIcon(vehicle: Vehicle): string {
+  const model = vehicle.model.toLowerCase()
+  if (vehicle.loadCapacity >= 10000) return '🚛'
+  if (model.includes('daily') || model.includes('largus')) return '🚐'
+  return '🚚'
+}
+
+/** Ближайшая точка на полилинии — прижимаем маркер к реальной дороге. */
+function nearestOnPolyline(pt: [number, number], coords: [number, number][]): [number, number] {
+  let best: [number, number] = coords[0]
+  let bestD = Infinity
+  for (let i = 0; i < coords.length - 1; i++) {
+    const ax = coords[i][0], ay = coords[i][1], bx = coords[i + 1][0], by = coords[i + 1][1]
+    const dx = bx - ax, dy = by - ay
+    const len2 = dx * dx + dy * dy
+    let t = len2 ? ((pt[0] - ax) * dx + (pt[1] - ay) * dy) / len2 : 0
+    t = Math.max(0, Math.min(1, t))
+    const qx = ax + dx * t, qy = ay + dy * t
+    const d = (pt[0] - qx) * (pt[0] - qx) + (pt[1] - qy) * (pt[1] - qy)
+    if (d < bestD) {
+      bestD = d
+      best = [qx, qy]
+    }
+  }
+  return best
+}
+
 /**
- * Карта на Яндекс Картах JS API 2.1 (требование заказчика: российский
- * картографический провайдер). Ключ — VITE_YANDEX_MAPS_KEY; при отсутствии
- * ключа MonitoringPage показывает fallback на Leaflet/OpenStreetMap.
+ * Карта на Яндекс Картах JS API 2.1: реальные дорожные маршруты
+ * (маршрутизатор Яндекса, «как в навигаторе»), иконки транспорта по типу ТС,
+ * прилипание маркеров к дороге, зум к маршруту выбранного автомобиля.
  */
 export function YandexMap({ vehicles, routes, telemetry, selectedId, onSelect, onFail }: MapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -46,11 +74,12 @@ export function YandexMap({ vehicles, routes, telemetry, selectedId, onSelect, o
   const ymapsRef = useRef<any>(null)
   const layoutRef = useRef<any>(null)
   const markersRef = useRef<Map<number, any>>(new Map())
-  const linesRef = useRef<Set<number>>(new Set())
+  const routingRef = useRef<Set<number>>(new Set())
+  const realGeometryRef = useRef<Map<number, [number, number][]>>(new Map())
   const animRef = useRef<Map<number, { from: [number, number]; to: [number, number]; started: number }>>(new Map())
   const rafRef = useRef<number | null>(null)
-  const propsRef = useRef({ telemetry, vehicles, selectedId, onSelect })
-  propsRef.current = { telemetry, vehicles, selectedId, onSelect }
+  const propsRef = useRef({ telemetry, vehicles, routes, selectedId, onSelect })
+  propsRef.current = { telemetry, vehicles, routes, selectedId, onSelect }
 
   useEffect(() => {
     let cancelled = false
@@ -65,7 +94,7 @@ export function YandexMap({ vehicles, routes, telemetry, selectedId, onSelect, o
         })
         mapRef.current = map
         layoutRef.current = ymaps.templateLayoutFactory.createClass(
-          '<div class="fleet-marker" style="background:{{properties.color}};{% if properties.selected %}width:32px;height:32px;font-size:13px;box-shadow:0 0 0 3px #fff, 0 2px 8px rgba(23,28,25,0.45);{% endif %}">{{properties.num}}</div>',
+          '<div class="vehicle-marker {{properties.selectedClass}}" style="border-color:{{properties.color}}">{{properties.icon}}</div>',
         )
       })
       .catch(() => {
@@ -83,38 +112,100 @@ export function YandexMap({ vehicles, routes, telemetry, selectedId, onSelect, o
         }
         mapRef.current = null
         markersRef.current.clear()
-        linesRef.current.clear()
+        routingRef.current.clear()
+        realGeometryRef.current.clear()
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Маршруты
+  // Реальные дорожные маршруты через маршрутизатор Яндекса (ТЗ: «как в навигаторе»)
   useEffect(() => {
     const map = mapRef.current
     const ymaps = ymapsRef.current
     if (!map || !ymaps) return
     for (const route of routes) {
-      if (linesRef.current.has(route.vehicleId) || route.points.length < 2) continue
-      linesRef.current.add(route.vehicleId)
-      map.geoObjects.add(
-        new ymaps.Polyline(
-          route.points.map((p) => [p.lat, p.lng]),
-          {},
-          { strokeColor: '#174D35', strokeWidth: 3, strokeStyle: 'dash', strokeOpacity: 0.55 },
-        ),
-      )
+      if (routingRef.current.has(route.vehicleId) || route.points.length < 2) continue
+      routingRef.current.add(route.vehicleId)
+      const pts: [number, number][] = route.points.map((p) => [p.lat, p.lng])
+      ymaps
+        .route(pts, { routingMode: 'auto', mapStateAutoApply: false })
+        .then((r: any) => {
+          if (!mapRef.current) return
+          try {
+            r.options.set({ strokeColor: '#174D35', strokeWidth: 4, strokeOpacity: 0.75, strokeStyle: 'solid' })
+            r.getWayPoints().each((wp: any) => wp.options.set('visible', false))
+          } catch {
+            /* оформление не критично */
+          }
+          mapRef.current.geoObjects.add(r)
+          const coords: [number, number][] = []
+          r.getPaths().each((path: any) => {
+            path.getSegments().each((seg: any) => {
+              for (const c of seg.geometry.getCoordinates()) coords.push([c[0], c[1]])
+            })
+          })
+          if (coords.length > 1) realGeometryRef.current.set(route.vehicleId, coords)
+          if (propsRef.current.selectedId === route.vehicleId) zoomToRoute(route.vehicleId)
+        })
+        .catch(() => {
+          // маршрутизатор недоступен — рисуем прямую линию как в первой версии
+          if (!mapRef.current) return
+          mapRef.current.geoObjects.add(
+            new ymaps.Polyline(pts, {}, { strokeColor: '#174D35', strokeWidth: 3, strokeStyle: 'dash', strokeOpacity: 0.55 }),
+          )
+        })
     }
-    if (routes.length > 0 && linesRef.current.size === routes.length) {
-      try {
-        map.setBounds(map.geoObjects.getBounds(), { checkZoomRange: true, zoomMargin: 24 })
-      } catch {
-        /* пустая геометрия */
-      }
-    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routes, mapRef.current, ymapsRef.current])
 
-  // Маркеры и плавное перемещение
+  /** Приблизить карту к маршруту выбранного автомобиля (ТЗ: как в навигаторе). */
+  function zoomToRoute(vehicleId: number) {
+    const map = mapRef.current
+    if (!map) return
+    const geom = realGeometryRef.current.get(vehicleId)
+    if (geom && geom.length > 1) {
+      let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180
+      for (const [lat, lng] of geom) {
+        minLat = Math.min(minLat, lat); maxLat = Math.max(maxLat, lat)
+        minLng = Math.min(minLng, lng); maxLng = Math.max(maxLng, lng)
+      }
+      map.setBounds(
+        [[minLat, minLng], [maxLat, maxLng]],
+        { checkZoomRange: true, zoomMargin: 40, duration: 400 },
+      )
+      return
+    }
+    const route = propsRef.current.routes.find((r) => r.vehicleId === vehicleId)
+    if (route && route.points.length) {
+      map.setBounds(
+        route.points.map((p) => [p.lat, p.lng]),
+        { checkZoomRange: true, zoomMargin: 40, duration: 400 },
+      )
+      return
+    }
+    const t = propsRef.current.telemetry.get(vehicleId)
+    if (t) map.setCenter([t.latitude, t.longitude], 13, { duration: 300 })
+  }
+
+  // Реакция на выбор автомобиля в боковой панели
+  useEffect(() => {
+    if (selectedId == null) {
+      // без выбора — показать весь автопарк
+      const map = mapRef.current
+      if (!map) return
+      const all: [number, number][] = []
+      realGeometryRef.current.forEach((geom) => all.push(...geom))
+      if (all.length > 1) {
+        map.setBounds(all, { checkZoomRange: true, zoomMargin: 40, duration: 400 })
+      }
+      return
+    }
+    zoomToRoute(selectedId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId])
+
+  // Маркеры и плавное перемещение по дороге
   useEffect(() => {
     const map = mapRef.current
     const ymaps = ymapsRef.current
@@ -127,11 +218,15 @@ export function YandexMap({ vehicles, routes, telemetry, selectedId, onSelect, o
       if (!pm) {
         pm = new ymaps.Placemark(
           [t.latitude, t.longitude],
-          { num: String(vehicle.id), color: markerColor(vehicle, t), selected },
+          {
+            icon: transportIcon(vehicle),
+            color: markerColor(vehicle, t),
+            selectedClass: selected ? 'selected' : '',
+          },
           {
             iconLayout: layoutRef.current,
-            iconShape: { type: 'Circle', coordinates: [0, 0], radius: 14 },
-            iconOffset: [-14, -14],
+            iconShape: { type: 'Circle', coordinates: [0, 0], radius: 18 },
+            iconOffset: [-18, -18],
             zIndexOffset: selected ? 1000 : 0,
           },
         )
@@ -139,7 +234,10 @@ export function YandexMap({ vehicles, routes, telemetry, selectedId, onSelect, o
         map.geoObjects.add(pm)
         markersRef.current.set(vehicle.id, pm)
       } else {
-        pm.properties.set({ color: markerColor(vehicle, t), selected })
+        pm.properties.set({
+          color: markerColor(vehicle, t),
+          selectedClass: selected ? 'selected' : '',
+        })
         const cur = pm.geometry.getCoordinates()
         animRef.current.set(vehicle.id, {
           from: [cur[0], cur[1]],
@@ -157,16 +255,20 @@ export function YandexMap({ vehicles, routes, telemetry, selectedId, onSelect, o
           if (!pm) continue
           const k = Math.min(1, (now - anim.started) / DURATION_MS)
           const eased = k * (2 - k)
-          pm.geometry.setCoordinates([
+          const straight: [number, number] = [
             anim.from[0] + (anim.to[0] - anim.from[0]) * eased,
             anim.from[1] + (anim.to[1] - anim.from[1]) * eased,
-          ])
+          ]
+          // прижимаем позицию к реальной дороге, если геометрия маршрута известна
+          const road = realGeometryRef.current.get(vehicleId)
+          pm.geometry.setCoordinates(road && road.length > 1 ? nearestOnPolyline(straight, road) : straight)
           if (k >= 1) animRef.current.delete(vehicleId)
         }
         rafRef.current = requestAnimationFrame(step)
       }
       rafRef.current = requestAnimationFrame(step)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [telemetry, vehicles, selectedId, mapRef.current, ymapsRef.current])
 
   return <div ref={containerRef} className="h-full w-full rounded-xl" />

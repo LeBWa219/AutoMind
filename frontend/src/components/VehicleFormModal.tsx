@@ -106,7 +106,7 @@ export function VehicleFormModal({
             ✕
           </button>
         </div>
-        <form onSubmit={submit} className="grid grid-cols-2 gap-3.5" noValidate>
+        <form onSubmit={submit} className="grid grid-cols-1 gap-3.5 sm:grid-cols-2" noValidate>
           <Field label="Госномер *" value={form.registrationNumber} onChange={set('registrationNumber')} />
           <Field label="VIN *" value={form.vin} onChange={set('vin')} />
           <Field label="Марка *" value={form.brand} onChange={set('brand')} />

@@ -41,11 +41,11 @@ export function HomePage({ onNavigate }: { onNavigate: (view: 'monitoring' | 'or
   ]
 
   return (
-    <main className="mx-auto max-w-6xl px-11 py-8">
+    <main className="mx-auto max-w-6xl px-5 py-6 sm:px-11 sm:py-8">
       <h1 className="text-2xl font-semibold">Главная</h1>
       <p className="mt-1 text-[13px] text-automind-gray">Что делаем сегодня?</p>
 
-      <div className="mt-6 grid grid-cols-3 gap-5">
+      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
         {blocks.map((b) => (
           <button
             key={b.title}
@@ -64,7 +64,7 @@ export function HomePage({ onNavigate }: { onNavigate: (view: 'monitoring' | 'or
         ))}
       </div>
 
-      <div className="mt-5 grid grid-cols-4 gap-5">
+      <div className="mt-5 grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
         <Kpi title="Автомобилей" value={vehicles.length} hint={`${attention} требуют внимания`} />
         <Kpi title="Водителей" value={drivers.length} hint={`${availableDrivers} доступны для назначения`} />
         <Kpi title="Заказов в работе" value="—" hint="появится на этапе 5" />
@@ -77,7 +77,7 @@ export function HomePage({ onNavigate }: { onNavigate: (view: 'monitoring' | 'or
           Телеметрия обновляется автоматически (WebSocket). Окончательное решение по заказу всегда принимает диспетчер.
         </p>
       </div>
-      <div className="mt-4 flex justify-center">
+      <div className="mt-4 flex flex-col items-center gap-1 sm:flex-row sm:gap-3">
         <LegalLinks onOpen={setLegalDoc} />
       </div>
       {legalDoc && <LegalModal doc={legalDoc} onClose={() => setLegalDoc(null)} />}

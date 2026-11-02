@@ -80,7 +80,7 @@ export function OrderResultsPage({
     .reduce((m, c) => Math.max(m, c.profit), -Infinity)
 
   return (
-    <main className="mx-auto max-w-[1240px] px-8 py-6">
+    <main className="mx-auto max-w-[1240px] px-4 py-5 sm:px-8 sm:py-6">
       <button onClick={onBack} className="text-[12px] text-automind-gray hover:text-automind-ink">
         ← К списку заказов
       </button>
@@ -118,7 +118,7 @@ export function OrderResultsPage({
       {error && <p className="mt-3 text-[13px] text-automind-red">{error}</p>}
 
       {/* KPI */}
-      <div className="mt-4 grid grid-cols-4 gap-4">
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <Kpi title="Выручка" value={fmtMoney(analysis.revenue)} hint="введена диспетчером" />
         <Kpi
           title="Лучшая себестоимость"
@@ -143,7 +143,8 @@ export function OrderResultsPage({
           Сравнение кандидатов · оплата труда, обслуживание, платные дороги и прочие расходы общие для всех,
           топливо — по индивидуальной истории водителя (ТЗ 5.6)
         </p>
-        <table className="w-full text-[12px]">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[1020px] text-[12px]">
           <thead>
             <tr className="bg-automind-bg text-left text-[9px] uppercase tracking-wider text-automind-gray">
               <th className="rounded-l-lg px-2.5 py-2 font-semibold">Водитель</th>
@@ -165,11 +166,12 @@ export function OrderResultsPage({
             ))}
           </tbody>
         </table>
+        </div>
       </section>
 
       {/* Обоснование оценки лучшего кандидата (ТЗ 5.9) */}
       {best && (
-        <div className="mt-4 grid grid-cols-[1fr_330px] gap-4">
+        <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[1fr_330px]">
           <section className="rounded-xl bg-white p-5 shadow-sm">
             <h2 className="text-[15px] font-semibold">Обоснование оценки · {best.driverName}</h2>
             <p className="mt-0.5 text-[11px] text-automind-gray">

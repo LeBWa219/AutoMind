@@ -79,9 +79,9 @@ export function CopilotPage({
   }
 
   return (
-    <div className="flex h-[calc(100vh-64px)]">
+    <div className="flex h-[calc(100vh-64px)] flex-col lg:flex-row">
       {/* Чат (ТЗ 6.2) */}
-      <section className="flex min-w-0 flex-1 flex-col border-r border-automind-gray/20">
+      <section className="flex min-w-0 flex-1 flex-col border-b border-automind-gray/20 lg:border-b-0 lg:border-r">
         <div className="flex items-center justify-between border-b border-automind-gray/20 px-5 py-3.5">
           <div>
             <h1 className="text-[16px] font-semibold">AI Logistics Copilot</h1>
@@ -99,7 +99,22 @@ export function CopilotPage({
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto bg-automind-bg px-5 py-4">
+        {orders.length > 0 && (
+          <div className="border-b border-automind-gray/20 bg-white px-5 py-2.5 lg:hidden">
+            <select
+              value={orderId ?? ''}
+              onChange={(e) => setOrderId(Number(e.target.value))}
+              className="h-9 w-full rounded-lg border border-automind-gray/40 bg-white px-3 text-[13px] outline-none focus:border-automind-dark"
+            >
+              {orders.map((o) => (
+                <option key={o.id} value={o.id}>
+                  Контекст: №{o.id} · {o.orderName}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+        <div className="flex-1 overflow-y-auto bg-automind-bg px-4 py-4 sm:px-5">
           {messages.length === 0 && !busy && (
             <div className="mx-auto max-w-[560px] rounded-xl border border-automind-gray/20 bg-white p-4 text-[13px] leading-relaxed text-automind-gray">
               Здравствуйте! Я — AI Logistics Copilot. Выберите заказ справа и спросите о расчёте,
@@ -169,7 +184,7 @@ export function CopilotPage({
       </section>
 
       {/* Информационный блок о контексте текущего заказа (ТЗ 6.2) */}
-      <aside className="w-[330px] shrink-0 overflow-y-auto bg-automind-bg p-4">
+      <aside className="hidden w-[330px] shrink-0 overflow-y-auto bg-automind-bg p-4 lg:block">
         <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-automind-gray">
           Контекст заказа
         </p>
