@@ -48,6 +48,7 @@ export default function App() {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [checking, setChecking] = useState(true)
   const [view, setView] = useState<View>('home')
+  const [menuOpen, setMenuOpen] = useState(false)
   const [activeOrderId, setActiveOrderId] = useState<number | null>(null)
   const [copilotOrderId, setCopilotOrderId] = useState<number | null>(null)
 
@@ -71,7 +72,8 @@ export default function App() {
     <ErrorBoundary>
       <ConsentBanner />
       <div className="min-h-screen">
-        <header className="flex h-16 items-center justify-between gap-2 border-b border-automind-gray/20 bg-white px-4 sm:px-6">
+        {/* Десктопный топбар */}
+        <header className="hidden h-16 items-center justify-between gap-2 border-b border-automind-gray/20 bg-white px-6 lg:flex">
           <div className="flex items-center gap-6">
             <button onClick={() => setView('home')} className="flex items-center gap-2.5">
               <span className="flex size-7 items-center justify-center rounded-lg bg-automind-dark text-sm font-bold text-automind-accent">
@@ -79,7 +81,7 @@ export default function App() {
               </span>
               <span className="text-lg font-semibold">AutoMind</span>
             </button>
-            <nav className="flex gap-1 overflow-x-auto sm:overflow-visible">
+            <nav className="flex gap-1">
               {(Object.keys(navLabels) as View[]).map((v) => (
                 <button
                   key={v}
@@ -93,12 +95,12 @@ export default function App() {
               ))}
             </nav>
           </div>
-          <div className="flex shrink-0 items-center gap-2 sm:gap-3.5">
-            <span className="hidden items-center gap-1.5 rounded-full bg-automind-bg px-3 py-1.5 text-[12px] text-automind-gray md:flex">
+          <div className="flex shrink-0 items-center gap-3.5">
+            <span className="flex items-center gap-1.5 rounded-full bg-automind-bg px-3 py-1.5 text-[12px] text-automind-gray">
               <span className="size-2 rounded-full bg-automind-status-green" />
               Система работает
             </span>
-            <span className="hidden text-[13px] font-medium sm:inline">
+            <span className="text-[13px] font-medium">
               {user.role === 'DISPATCHER' ? 'Диспетчер' : user.role} · #{user.id}
             </span>
             <button
@@ -109,6 +111,73 @@ export default function App() {
             </button>
           </div>
         </header>
+
+        {/* Мобильный топбар с бургером */}
+        <header className="flex h-16 items-center justify-between border-b border-automind-gray/20 bg-white px-4 lg:hidden">
+          <button
+            onClick={() => setMenuOpen(true)}
+            aria-label="Меню"
+            className="flex size-10 flex-col items-center justify-center gap-1.5 rounded-lg hover:bg-automind-bg"
+          >
+            <span className="h-0.5 w-5 rounded bg-automind-ink" />
+            <span className="h-0.5 w-5 rounded bg-automind-ink" />
+            <span className="h-0.5 w-5 rounded bg-automind-ink" />
+          </button>
+          <button onClick={() => setView('home')} className="flex items-center gap-2">
+            <span className="flex size-7 items-center justify-center rounded-lg bg-automind-dark text-sm font-bold text-automind-accent">
+              A
+            </span>
+            <span className="text-[17px] font-semibold">AutoMind</span>
+          </button>
+          <button
+            onClick={() => authApi.logout().then(() => setUser(null))}
+            className="rounded-lg px-2 py-1.5 text-[12px] font-medium text-automind-dark hover:bg-automind-bg"
+          >
+            Выход
+          </button>
+        </header>
+
+        {/* Выдвижное меню-бургер */}
+        {menuOpen && (
+          <div className="fixed inset-0 z-[1200] lg:hidden">
+            <div className="absolute inset-0 bg-automind-ink/50" onClick={() => setMenuOpen(false)} />
+            <nav className="absolute inset-y-0 left-0 flex w-[280px] flex-col bg-white shadow-xl">
+              <div className="flex items-center gap-2.5 border-b border-automind-gray/20 px-4 py-4">
+                <span className="flex size-8 items-center justify-center rounded-lg bg-automind-dark text-sm font-bold text-automind-accent">
+                  A
+                </span>
+                <span className="text-[17px] font-semibold">AutoMind</span>
+              </div>
+              <div className="flex-1 overflow-y-auto p-3">
+                {(Object.keys(navLabels) as View[]).map((v) => (
+                  <button
+                    key={v}
+                    onClick={() => {
+                      setView(v)
+                      setMenuOpen(false)
+                    }}
+                    className={`mb-1 w-full rounded-lg px-3.5 py-3 text-left text-[14px] font-medium ${
+                      view === v ? 'bg-automind-accent/25 text-automind-ink' : 'text-automind-gray hover:bg-automind-bg'
+                    }`}
+                  >
+                    {navLabels[v]}
+                  </button>
+                ))}
+              </div>
+              <div className="border-t border-automind-gray/20 p-4">
+                <p className="text-[13px] font-medium">
+                  {user.role === 'DISPATCHER' ? 'Диспетчер' : user.role} · #{user.id}
+                </p>
+                <button
+                  onClick={() => authApi.logout().then(() => setUser(null))}
+                  className="mt-2 w-full rounded-lg border border-automind-gray/40 py-2 text-[13px] font-medium"
+                >
+                  Выход
+                </button>
+              </div>
+            </nav>
+          </div>
+        )}
 
         {view === 'home' && <HomePage onNavigate={setView} />}
         {view === 'monitoring' && <MonitoringPage />}
