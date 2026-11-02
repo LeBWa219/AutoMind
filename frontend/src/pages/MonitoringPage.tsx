@@ -3,6 +3,7 @@ import { fleetApi } from '../api/fleet'
 import { VEHICLE_STATUSES, type Driver, type FleetRoute, type RoutePoint, type Vehicle } from '../api/types'
 import { useTelemetryStream } from '../hooks/useTelemetryStream'
 import { FleetMap } from '../components/FleetMap'
+import { YandexMap } from '../components/YandexMap'
 import { VehicleInfoPanel } from '../components/VehicleInfoPanel'
 import { VehicleFormModal } from '../components/VehicleFormModal'
 import { DriverFormModal } from '../components/DriverFormModal'
@@ -26,6 +27,8 @@ export function MonitoringPage() {
     open: false,
     driver: null,
   })
+  const [mapFailed, setMapFailed] = useState(false)
+  const yandexKey = import.meta.env.VITE_YANDEX_MAPS_KEY as string | undefined
 
   const { telemetry, mode } = useTelemetryStream(true)
 
@@ -202,13 +205,24 @@ export function MonitoringPage() {
           </span>
         </div>
         <div className="min-h-0 flex-1">
-          <FleetMap
-            vehicles={vehicles}
-            routes={routes}
-            telemetry={telemetry}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
-          />
+          {yandexKey && !mapFailed ? (
+            <YandexMap
+              vehicles={vehicles}
+              routes={routes}
+              telemetry={telemetry}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+              onFail={() => setMapFailed(true)}
+            />
+          ) : (
+            <FleetMap
+              vehicles={vehicles}
+              routes={routes}
+              telemetry={telemetry}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+            />
+          )}
         </div>
       </main>
 

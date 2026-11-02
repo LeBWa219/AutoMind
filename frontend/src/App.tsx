@@ -8,6 +8,7 @@ import { OrdersPage } from './pages/OrdersPage'
 import { OrderFormPage } from './pages/OrderFormPage'
 import { OrderResultsPage } from './pages/OrderResultsPage'
 import { CopilotPage } from './pages/CopilotPage'
+import { ConsentBanner } from './components/legal/Legal'
 
 type View = 'home' | 'monitoring' | 'orders' | 'order-form' | 'order-results' | 'copilot'
 
@@ -68,6 +69,7 @@ export default function App() {
 
   return (
     <ErrorBoundary>
+      <ConsentBanner />
       <div className="min-h-screen">
         <header className="flex h-16 items-center justify-between border-b border-automind-gray/20 bg-white px-6">
           <div className="flex items-center gap-6">

@@ -12,7 +12,7 @@ interface FleetMapProps {
 }
 
 /** Цвет маркера по состоянию (ТЗ 2.3, решение п.7). */
-function markerColor(vehicle: Vehicle | undefined, telemetry: Telemetry | undefined): string {
+export function markerColor(vehicle: Vehicle | undefined, telemetry: Telemetry | undefined): string {
   if (!vehicle) return '#8a948d'
   if (vehicle.status === 'MAINTENANCE' || vehicle.status === 'INACTIVE') return '#8a948d'
   const warning = telemetry?.warning ?? ''

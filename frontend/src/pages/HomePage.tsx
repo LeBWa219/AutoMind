@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { LegalLinks, LegalModal, type LegalDoc } from '../components/legal/Legal'
 import { fleetApi } from '../api/fleet'
 import type { Telemetry, Vehicle, Driver } from '../api/types'
 
@@ -7,6 +8,7 @@ export function HomePage({ onNavigate }: { onNavigate: (view: 'monitoring' | 'or
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [drivers, setDrivers] = useState<Driver[]>([])
   const [telemetry, setTelemetry] = useState<Telemetry[]>([])
+  const [legalDoc, setLegalDoc] = useState<LegalDoc>(null)
 
   useEffect(() => {
     fleetApi.vehicles().then(setVehicles).catch(() => undefined)
@@ -75,6 +77,10 @@ export function HomePage({ onNavigate }: { onNavigate: (view: 'monitoring' | 'or
           Телеметрия обновляется автоматически (WebSocket). Окончательное решение по заказу всегда принимает диспетчер.
         </p>
       </div>
+      <div className="mt-4 flex justify-center">
+        <LegalLinks onOpen={setLegalDoc} />
+      </div>
+      {legalDoc && <LegalModal doc={legalDoc} onClose={() => setLegalDoc(null)} />}
     </main>
   )
 }

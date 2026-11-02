@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+import { LegalLinks, LegalModal, type LegalDoc } from '../components/legal/Legal'
 import { authApi, type AuthUser } from '../api/auth'
 
 /** Страница входа по коду доступа (ТЗ 3.2). Код проверяется на сервере. */
@@ -7,6 +8,7 @@ export function LoginPage({ onLogin }: { onLogin: (user: AuthUser) => void }) {
   const [code, setCode] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [legalDoc, setLegalDoc] = useState<LegalDoc>(null)
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -69,8 +71,12 @@ export function LoginPage({ onLogin }: { onLogin: (user: AuthUser) => void }) {
             <br />
             Количество попыток ограничено.
           </p>
+          <div className="mt-3 flex justify-center">
+            <LegalLinks onOpen={setLegalDoc} />
+          </div>
         </div>
       </div>
+      {legalDoc && <LegalModal doc={legalDoc} onClose={() => setLegalDoc(null)} />}
     </div>
   )
 }
