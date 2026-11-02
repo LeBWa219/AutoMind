@@ -45,6 +45,9 @@ body {
 
 /* Маркеры-иконки транспорта на Яндекс Картах (стиль навигатора) */
 .vehicle-marker {
+  position: absolute;
+  left: -18px;
+  top: -18px;
   display: flex;
   align-items: center;
   justify-content: center;
