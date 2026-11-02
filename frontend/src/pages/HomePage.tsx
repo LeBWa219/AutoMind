@@ -2,22 +2,34 @@ import { useEffect, useState } from 'react'
 import { LegalLinks, LegalModal, type LegalDoc } from '../components/legal/Legal'
 import { fleetApi } from '../api/fleet'
 import type { Telemetry, Vehicle, Driver } from '../api/types'
+import { ordersApi, type Order } from '../api/orders'
 
 /** Главная страница (ТЗ 2.5): три функциональных блока + KPI. */
 export function HomePage({ onNavigate }: { onNavigate: (view: 'monitoring' | 'orders' | 'copilot') => void }) {
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [drivers, setDrivers] = useState<Driver[]>([])
   const [telemetry, setTelemetry] = useState<Telemetry[]>([])
+  const [orders, setOrders] = useState<Order[]>([])
   const [legalDoc, setLegalDoc] = useState<LegalDoc>(null)
 
   useEffect(() => {
     fleetApi.vehicles().then(setVehicles).catch(() => undefined)
     fleetApi.drivers().then(setDrivers).catch(() => undefined)
     fleetApi.telemetry().then(setTelemetry).catch(() => undefined)
+    ordersApi.list().then(setOrders).catch(() => undefined)
   }, [])
 
   const attention = telemetry.filter((t) => t.warning != null).length
   const availableDrivers = drivers.filter((d) => d.status === 'AVAILABLE' && d.vehicle).length
+  const ordersInWork = orders.filter((o) =>
+    ['NEW', 'CALCULATED', 'ASSIGNED', 'IN_PROGRESS'].includes(o.status),
+  ).length
+  const profitabilityValues = orders
+    .map((o) => o.bestProfitability)
+    .filter((v): v is number => v != null)
+  const avgProfitability = profitabilityValues.length
+    ? (profitabilityValues.reduce((s, v) => s + v, 0) / profitabilityValues.length).toFixed(1) + ' %'
+    : '—'
 
   const blocks: { icon: string; title: string; desc: string; view: 'monitoring' | 'orders' | 'copilot' }[] = [
     {
@@ -67,8 +79,8 @@ export function HomePage({ onNavigate }: { onNavigate: (view: 'monitoring' | 'or
       <div className="mt-5 grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
         <Kpi title="Автомобилей" value={vehicles.length} hint={`${attention} требуют внимания`} />
         <Kpi title="Водителей" value={drivers.length} hint={`${availableDrivers} доступны для назначения`} />
-        <Kpi title="Заказов в работе" value="—" hint="появится на этапе 5" />
-        <Kpi title="Средняя рентабельность" value="—" hint="появится на этапе 5" />
+        <Kpi title="Заказов в работе" value={ordersInWork} hint={`всего заказов: ${orders.length}`} />
+        <Kpi title="Средняя рентабельность" value={avgProfitability} hint="по лучшим кандидатам заказов" />
       </div>
 
       <div className="mt-5 flex items-center gap-2 rounded-xl border border-automind-gray/20 bg-white px-4 py-3">

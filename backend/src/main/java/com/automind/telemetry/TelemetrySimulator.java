@@ -146,6 +146,10 @@ public class TelemetrySimulator {
 
             telemetryRepository.findFirstByVehicleIdOrderByRecordedAtDesc(vehicle.getId()).ifPresent(t -> {
                 state.fuelLevel = t.getFuelLevel() == null ? 50 : t.getFuelLevel();
+                // если предыдущая сессия закончилась на пустом баке — «заправлены на смену»
+                if (state.scenario != Scenario.FAULT && state.fuelLevel < 15) {
+                    state.fuelLevel = 85 + Math.random() * 10;
+                }
                 state.engineTemp = t.getEngineTemperature() == null ? 20 : t.getEngineTemperature();
                 state.coolantTemp = t.getCoolantTemperature() == null ? state.engineTemp : t.getCoolantTemperature();
                 state.batteryVoltage = t.getBatteryVoltage() == null ? 12.6 : t.getBatteryVoltage();
@@ -154,10 +158,7 @@ public class TelemetrySimulator {
 
             switch (state.scenario) {
                 case NORMAL -> state.moving = true;
-                case OVERHEAT, HIGH_CONSUMPTION -> {
-                    state.moving = true;
-                    state.fuelLevel = Math.min(state.fuelLevel, 22); // скоро сработает «низкий уровень топлива»
-                }
+                case OVERHEAT, HIGH_CONSUMPTION -> state.moving = true;
                 case FAULT -> {
                     state.moving = false;
                     state.fuelLevel = Math.min(state.fuelLevel, 30);
@@ -240,6 +241,10 @@ public class TelemetrySimulator {
         }
         double consumption = movement ? round1(nominalRate * s.consumptionFactor) : 0.0;
 
+        // Заправка при почти пустом баке (длительная работа симулятора)
+        if (engineOn && s.fuelLevel < 3) {
+            s.fuelLevel = 88 + Math.random() * 8;
+        }
         // Топливо и пробег
         double tankLiters = 80;
         if (movement) {

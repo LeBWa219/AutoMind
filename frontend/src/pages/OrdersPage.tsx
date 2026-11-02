@@ -77,7 +77,7 @@ export function OrdersPage({
                 </td>
                 <td className="px-3 py-2.5 text-right">{o.loadedDistance + o.emptyDistance}</td>
                 <td className="px-3 py-2.5 text-right font-medium">{fmtMoney(o.revenue)}</td>
-                <td className="px-3 py-2.5 text-right font-medium text-automind-gray">—</td>
+                <td className="px-3 py-2.5 text-right font-medium">{o.bestProfit != null ? fmtMoney(o.bestProfit) : '—'}</td>
                 <td className="px-3 py-2.5">
                   <span
                     className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${STATUS_CHIP[o.status].bg} ${STATUS_CHIP[o.status].text}`}
@@ -99,7 +99,7 @@ export function OrdersPage({
         </table>
       </div>
       <p className="mt-3 text-right text-[11px] text-automind-gray">
-        Себестоимость и прибыль отображаются в результатах расчёта по кандидатам
+        Прибыль — лучшая среди доступных кандидатов последнего расчёта
       </p>
     </main>
   )

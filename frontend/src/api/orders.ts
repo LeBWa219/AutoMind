@@ -20,6 +20,8 @@ export interface Order {
   revenue: number
   status: 'NEW' | 'CALCULATED' | 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
   createdAt: string
+  bestProfit: number | null
+  bestProfitability: number | null
   assignedDriver: {
     driverId: number
     driverName: string

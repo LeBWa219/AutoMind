@@ -163,7 +163,8 @@ public class OrderService {
                            BigDecimal loadedDistance, BigDecimal emptyDistance, BigDecimal plannedDuration,
                            BigDecimal revenue, String status,
                            java.time.OffsetDateTime createdAt,
-                           AssignedDriverInfo assignedDriver) {
+                           AssignedDriverInfo assignedDriver,
+                           BigDecimal bestProfit, BigDecimal bestProfitability) {
     }
 
     public record AssignedDriverInfo(Long driverId, String driverName, Long vehicleId, String vehicleLabel,
@@ -206,7 +207,11 @@ public class OrderService {
 
     @Transactional(readOnly = true)
     public List<OrderDto> listAll() {
-        return orderRepository.findAllByOrderByCreatedAtDesc().stream().map(this::toDto).toList();
+        Map<Long, List<OrderCalculationEntity>> calcsByOrder = calculationRepository.findAll().stream()
+                .collect(java.util.stream.Collectors.groupingBy(OrderCalculationEntity::getOrderId));
+        return orderRepository.findAllByOrderByCreatedAtDesc().stream()
+                .map(o -> toDto(o, calcsByOrder.getOrDefault(o.getId(), List.of())))
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -764,6 +769,11 @@ public class OrderService {
 
     @Transactional(readOnly = true)
     public OrderDto toDto(OrderEntity order) {
+        return toDto(order, calculationRepository.findByOrderId(order.getId()));
+    }
+
+    @Transactional(readOnly = true)
+    public OrderDto toDto(OrderEntity order, List<OrderCalculationEntity> calcs) {
         var assignment = assignmentRepository.findByOrderIdAndAssignmentStatus(order.getId(), "ACTIVE").orElse(null);
         AssignedDriverInfo assigned = null;
         if (assignment != null) {
@@ -775,10 +785,15 @@ public class OrderService {
             assigned = new AssignedDriverInfo(assignment.getDriverId(), name,
                     assignment.getVehicleId(), vehicleLabel, assignment.getAssignedAt());
         }
+        BigDecimal bestProfit = calcs.stream().map(OrderCalculationEntity::getProfit)
+                .max(BigDecimal::compareTo).orElse(null);
+        BigDecimal bestProfitability = calcs.stream().map(OrderCalculationEntity::getProfitability)
+                .max(BigDecimal::compareTo).orElse(null);
         return new OrderDto(order.getId(), order.getOrderName(), order.getCargoType(), order.getCargoDescription(),
                 order.getCargoWeight(), order.getCargoVolume(), order.isFragile(), order.getSpecialConditions(),
                 order.getOrigin(), order.getDestination(), order.getLoadedDistance(), order.getEmptyDistance(),
-                order.getPlannedDuration(), order.getRevenue(), order.getStatus(), order.getCreatedAt(), assigned);
+                order.getPlannedDuration(), order.getRevenue(), order.getStatus(), order.getCreatedAt(), assigned,
+                bestProfit, bestProfitability);
     }
 
     private CandidateDto toDto(Candidate c, OrderEntity order) {
