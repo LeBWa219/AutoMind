@@ -19,6 +19,21 @@ declare global {
   }
 }
 
+/** Реальная дорожная геометрия через HTTP Роутинг API (ключ типа «Маршрутизатор»). */
+async function fetchRoadGeometry(pts: [number, number][], routerKey: string): Promise<[number, number][]> {
+  const wp = pts.map(([lat, lng]) => `${lat},${lng}`).join("|")
+  const res = await fetch(
+    `https://api.routing.yandex.net/v2/route?waypoints=${wp}&apikey=${encodeURIComponent(routerKey)}`,
+  )
+  const body = await res.json()
+  const coords = body?.routes?.[0]?.geometry?.coordinates
+  if (!Array.isArray(coords) || coords.length < 2) {
+    throw new Error(body?.errors?.join("; ") || "Роутер не вернул геометрию")
+  }
+  // GeoJSON-порядок [долгота, широта] -> [широта, долгота]
+  return coords.map((c: [number, number]) => [c[1], c[0]])
+}
+
 function loadYmaps(key: string): Promise<any> {
   if (window.ymaps) return Promise.resolve(window.ymaps)
   if (window.__ymapsLoading) return window.__ymapsLoading
@@ -159,11 +174,28 @@ export function YandexMap({ vehicles, routes, telemetry, selectedId, onSelect, o
           if (propsRef.current.selectedId === route.vehicleId) zoomToRoute(route.vehicleId)
         })
         .catch(() => {
-          // маршрутизатор недоступен — рисуем прямую линию как в первой версии
-          if (!mapRef.current) return
-          mapRef.current.geoObjects.add(
-            new ymaps.Polyline(pts, {}, { strokeColor: '#174D35', strokeWidth: 3, strokeStyle: 'dash', strokeOpacity: 0.55 }),
-          )
+          // JS-маршрутизатор недоступен — пробуем HTTP Роутинг API с ключом «Маршрутизатор»
+          const routerKey = import.meta.env.VITE_YANDEX_ROUTER_KEY as string | undefined
+          const drawStraight = () => {
+            if (!mapRef.current) return
+            mapRef.current.geoObjects.add(
+              new ymaps.Polyline(pts, {}, { strokeColor: '#174D35', strokeWidth: 3, strokeStyle: 'dash', strokeOpacity: 0.55 }),
+            )
+          }
+          if (!routerKey) {
+            drawStraight()
+            return
+          }
+          fetchRoadGeometry(pts, routerKey)
+            .then((geom) => {
+              if (!mapRef.current) return
+              realGeometryRef.current.set(route.vehicleId, geom)
+              mapRef.current.geoObjects.add(
+                new ymaps.Polyline(geom, {}, { strokeColor: '#174D35', strokeWidth: 4, strokeOpacity: 0.75 }),
+              )
+              if (propsRef.current.selectedId === route.vehicleId) zoomToRoute(route.vehicleId)
+            })
+            .catch(drawStraight)
         })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
