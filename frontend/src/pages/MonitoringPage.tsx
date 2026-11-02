@@ -163,7 +163,7 @@ function DesktopLayout({ vehicles, drivers, routes, selectedId, setSelectedId, t
           <StreamBadge mode={mode} />
         </div>
         <div className="min-h-0 flex-1">
-          <MapView {...{ vehicles, routes, telemetry, selectedId, setSelectedId }} />
+          <MapView {...{ vehicles, routes, telemetry, selectedId, onSelect: setSelectedId }} />
         </div>
       </main>
 
@@ -224,7 +224,16 @@ function MobileNavigatorLayout({ vehicles, drivers, routes, selectedId, setSelec
     <div className="relative h-[calc(100vh-64px)] overflow-hidden">
       {/* Карта на весь экран */}
       <div className="absolute inset-0">
-        <MapView {...{ vehicles, routes, telemetry, selectedId, setSelectedId }} />
+        <MapView
+          vehicles={vehicles}
+          routes={routes}
+          telemetry={telemetry}
+          selectedId={selectedId}
+          onSelect={(id) => {
+            setSelectedId(id)
+            setExpanded(true) // клик по иконке на карте открывает карточку машины
+          }}
+        />
       </div>
 
       {/* Индикатор потока телеметрии */}
@@ -400,12 +409,12 @@ function MobileNavigatorLayout({ vehicles, drivers, routes, selectedId, setSelec
 // КАРТА (общая)
 // ============================================================================
 
-function MapView({ vehicles, routes, telemetry, selectedId, setSelectedId }: {
+function MapView({ vehicles, routes, telemetry, selectedId, onSelect }: {
   vehicles: Vehicle[]
   routes: { vehicleId: number; points: RoutePoint[]; name: string }[]
   telemetry: Map<number, import('../api/types').Telemetry>
   selectedId: number | null
-  setSelectedId: (id: number) => void
+  onSelect: (id: number) => void
 }) {
   const yandexKey = import.meta.env.VITE_YANDEX_MAPS_KEY as string | undefined
   const [mapFailed, setMapFailed] = useState(false)
@@ -416,7 +425,7 @@ function MapView({ vehicles, routes, telemetry, selectedId, setSelectedId }: {
         routes={routes}
         telemetry={telemetry}
         selectedId={selectedId}
-        onSelect={setSelectedId}
+        onSelect={onSelect}
         onFail={() => setMapFailed(true)}
       />
     )
@@ -427,7 +436,7 @@ function MapView({ vehicles, routes, telemetry, selectedId, setSelectedId }: {
       routes={routes}
       telemetry={telemetry}
       selectedId={selectedId}
-      onSelect={setSelectedId}
+      onSelect={onSelect}
     />
   )
 }

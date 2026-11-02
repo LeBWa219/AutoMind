@@ -280,7 +280,7 @@ export function YandexMap({ vehicles, routes, telemetry, selectedId, onSelect, o
           },
           {
             iconLayout: layoutRef.current,
-            iconShape: { type: 'Circle', coordinates: [0, 0], radius: 18 },
+            iconShape: { type: 'Circle', coordinates: [0, 0], radius: 24 },
             iconOffset: [-18, -18],
             zIndexOffset: selected ? 1000 : 0,
           },
