@@ -1,3 +1,5 @@
+# AutoMind — запуск всего стека одной командой: docker compose up --build
+# Открывать: http://localhost:8080 (код доступа DEMO-2026)
 services:
   postgres:
     image: postgres:16-alpine
@@ -8,7 +10,7 @@ services:
       # Пароль dev-базы задаётся в .env (см. .env.example); значение по умолчанию — только для локальной разработки
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-automind_dev}
     ports:
-      # 5432/5433 заняты локальным PostgreSQL на машине разработчика — используем 5434
+      # 5432/5433 часто заняты локальным PostgreSQL — наружу 5434 (для отладки)
       - "5434:5432"
     volumes:
       - automind_pgdata:/var/lib/postgresql/data
@@ -17,6 +19,32 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  backend:
+    build: ./backend
+    container_name: automind-backend
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: automind
+      DB_USER: automind
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-automind_dev}
+    # Миграции и тестовые данные применяются автоматически при старте
+    ports:
+      # наружу для отладки API; фронтенд общается с backend по внутренней сети
+      - "8081:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    container_name: automind-frontend
+    ports:
+      # единая точка входа: интерфейс + /api + /ws
+      - "8080:80"
+    depends_on:
+      - backend
 
 volumes:
   automind_pgdata:

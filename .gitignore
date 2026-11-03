@@ -10,9 +10,13 @@ target/
 *.jar
 !.mvn/wrapper/maven-wrapper.jar
 
-# Docker / env
+# Docker / env — ключ Яндекса во frontend/.env коммитится намеренно
+# (репозиторий приватный, JS API ключ публичен по природе; см. README)
 .env
 .env.*
+!frontend/.env
+!frontend/.env.production
+!/.env.example
 
 # IDE
 .idea/
