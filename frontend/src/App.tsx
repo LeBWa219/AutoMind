@@ -15,8 +15,8 @@ type View = 'home' | 'monitoring' | 'orders' | 'order-form' | 'order-results' | 
 const navLabels: Partial<Record<View, string>> = {
   home: 'Главная',
   monitoring: 'Мониторинг',
-  orders: 'Экономика перевозок',
-  copilot: 'AI Copilot',
+  orders: 'Расчет грузоперевозок',
+  copilot: 'Ассистент',
 }
 
 /** Показывает ошибку рендера вместо белого экрана. */
@@ -73,21 +73,21 @@ export default function App() {
       <ConsentBanner />
       <div className="min-h-screen">
         {/* Десктопный топбар */}
-        <header className="hidden h-16 items-center justify-between gap-2 border-b border-automind-gray/20 bg-white px-6 lg:flex">
+        <header className="hidden h-16 items-center justify-between gap-2 border-b border-automind-dark/15 bg-automind-accent px-6 lg:flex">
           <div className="flex items-center gap-6">
             <button onClick={() => setView('home')} className="flex items-center gap-2.5">
-              <span className="flex size-7 items-center justify-center rounded-lg bg-automind-dark text-sm font-bold text-automind-accent">
+              <span className="flex size-7 items-center justify-center rounded-lg bg-automind-dark text-sm font-bold text-white">
                 A
               </span>
-              <span className="text-lg font-semibold">AutoMind</span>
+              <span className="text-lg font-semibold text-automind-dark">AutoMind</span>
             </button>
             <nav className="flex gap-1">
               {(Object.keys(navLabels) as View[]).map((v) => (
                 <button
                   key={v}
                   onClick={() => setView(v)}
-                  className={`rounded-lg px-3 py-1.5 text-[13px] font-medium ${
-                    view === v ? 'bg-automind-bg text-automind-ink' : 'text-automind-gray hover:text-automind-ink'
+                  className={`rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors ${
+                    view === v ? 'bg-automind-dark text-white' : 'text-automind-dark/70 hover:bg-white/40 hover:text-automind-dark'
                   }`}
                 >
                   {navLabels[v]}
@@ -96,7 +96,7 @@ export default function App() {
             </nav>
           </div>
           <div className="flex shrink-0 items-center gap-3.5">
-            <span className="flex items-center gap-1.5 rounded-full bg-automind-bg px-3 py-1.5 text-[12px] text-automind-gray">
+            <span className="flex items-center gap-1.5 rounded-full bg-white/60 px-3 py-1.5 text-[12px] font-medium text-automind-dark">
               <span className="size-2 rounded-full bg-automind-status-green" />
               Система работает
             </span>
@@ -105,7 +105,7 @@ export default function App() {
             </span>
             <button
               onClick={() => authApi.logout().then(() => setUser(null))}
-              className="rounded-lg px-2 py-1.5 text-[13px] font-medium text-automind-dark hover:bg-automind-bg"
+              className="rounded-lg px-2 py-1.5 text-[13px] font-semibold text-automind-dark hover:bg-white/50"
             >
               Выход
             </button>
@@ -113,7 +113,7 @@ export default function App() {
         </header>
 
         {/* Мобильный топбар с бургером */}
-        <header className="flex h-16 items-center justify-between border-b border-automind-gray/20 bg-white px-4 lg:hidden">
+        <header className="flex h-16 items-center justify-between border-b border-automind-dark/15 bg-automind-accent px-4 lg:hidden">
           <button
             onClick={() => setMenuOpen(true)}
             aria-label="Меню"
@@ -124,10 +124,10 @@ export default function App() {
             <span className="h-0.5 w-5 rounded bg-automind-ink" />
           </button>
           <button onClick={() => setView('home')} className="flex items-center gap-2">
-            <span className="flex size-7 items-center justify-center rounded-lg bg-automind-dark text-sm font-bold text-automind-accent">
+            <span className="flex size-7 items-center justify-center rounded-lg bg-automind-dark text-sm font-bold text-white">
               A
             </span>
-            <span className="text-[17px] font-semibold">AutoMind</span>
+            <span className="text-[17px] font-semibold text-automind-dark">AutoMind</span>
           </button>
           <button
             onClick={() => authApi.logout().then(() => setUser(null))}
@@ -142,11 +142,11 @@ export default function App() {
           <div className="fixed inset-0 z-[1200] lg:hidden">
             <div className="absolute inset-0 bg-automind-ink/50" onClick={() => setMenuOpen(false)} />
             <nav className="absolute inset-y-0 left-0 flex w-[280px] flex-col bg-white shadow-xl">
-              <div className="flex items-center gap-2.5 border-b border-automind-gray/20 px-4 py-4">
-                <span className="flex size-8 items-center justify-center rounded-lg bg-automind-dark text-sm font-bold text-automind-accent">
+              <div className="flex items-center gap-2.5 border-b border-automind-dark/15 bg-automind-accent px-4 py-4">
+                <span className="flex size-8 items-center justify-center rounded-lg bg-automind-dark text-sm font-bold text-white">
                   A
                 </span>
-                <span className="text-[17px] font-semibold">AutoMind</span>
+                <span className="text-[17px] font-semibold text-automind-dark">AutoMind</span>
               </div>
               <div className="flex-1 overflow-y-auto p-3">
                 {(Object.keys(navLabels) as View[]).map((v) => (
@@ -157,7 +157,7 @@ export default function App() {
                       setMenuOpen(false)
                     }}
                     className={`mb-1 w-full rounded-lg px-3.5 py-3 text-left text-[14px] font-medium ${
-                      view === v ? 'bg-automind-accent/25 text-automind-ink' : 'text-automind-gray hover:bg-automind-bg'
+                      view === v ? 'bg-automind-accent/40 text-automind-dark' : 'text-automind-gray hover:bg-automind-bg'
                     }`}
                   >
                     {navLabels[v]}
@@ -179,7 +179,15 @@ export default function App() {
           </div>
         )}
 
-        {view === 'home' && <HomePage onNavigate={setView} />}
+        {view === 'home' && (
+          <HomePage
+            onNavigate={setView}
+            onOpenResults={(id) => {
+              setActiveOrderId(id)
+              setView('order-results')
+            }}
+          />
+        )}
         {view === 'monitoring' && <MonitoringPage />}
         {view === 'orders' && (
           <OrdersPage

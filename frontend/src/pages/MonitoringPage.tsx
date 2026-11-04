@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { fleetApi } from '../api/fleet'
-import type { Driver, FleetRoute, RoutePoint, Vehicle } from '../api/types'
-import { useTelemetryStream } from '../hooks/useTelemetryStream'
-import { FleetMap } from '../components/FleetMap'
-import { YandexMap, transportIcon } from '../components/YandexMap'
+import type { Vehicle } from '../api/types'
+import { useFleetData, type FleetData } from '../hooks/useFleetData'
+import { transportIcon } from '../components/YandexMap'
+import { MapView } from '../components/MapView'
 import { VehicleInfoPanel } from '../components/VehicleInfoPanel'
 import { VehicleFormModal } from '../components/VehicleFormModal'
 import { DriverFormModal } from '../components/DriverFormModal'
@@ -45,46 +44,6 @@ export function MonitoringPage() {
 // ОБЩЕЕ СОСТОЯНИЕ ДАННЫХ
 // ============================================================================
 
-function useFleetData() {
-  const [vehicles, setVehicles] = useState<Vehicle[]>([])
-  const [drivers, setDrivers] = useState<Driver[]>([])
-  const [routes, setRoutes] = useState<{ vehicleId: number; points: RoutePoint[]; name: string }[]>([])
-  const [selectedId, setSelectedId] = useState<number | null>(null)
-  const [vehicleModal, setVehicleModal] = useState<{ open: boolean; vehicle: Vehicle | null }>({
-    open: false,
-    vehicle: null,
-  })
-  const [driverModal, setDriverModal] = useState(false)
-  const { telemetry, mode } = useTelemetryStream(true)
-
-  function reload() {
-    fleetApi.vehicles().then(setVehicles).catch(() => undefined)
-    fleetApi.drivers().then(setDrivers).catch(() => undefined)
-    fleetApi
-      .routes()
-      .then((rs: FleetRoute[]) =>
-        setRoutes(
-          rs.map((r) => ({
-            vehicleId: r.vehicleId,
-            name: r.routeName,
-            points:
-              typeof r.routeCoordinates === 'string'
-                ? (JSON.parse(r.routeCoordinates) as RoutePoint[])
-                : r.routeCoordinates,
-          })),
-        ),
-      )
-      .catch(() => undefined)
-  }
-  useEffect(reload, [])
-
-  return {
-    vehicles, drivers, routes, selectedId, setSelectedId,
-    telemetry, mode, reload, vehicleModal, setVehicleModal, driverModal, setDriverModal,
-  }
-}
-
-type FleetData = ReturnType<typeof useFleetData>
 
 // ============================================================================
 // ДЕСКТОП: три области (ТЗ 4.2)
@@ -92,10 +51,29 @@ type FleetData = ReturnType<typeof useFleetData>
 
 function DesktopLayout({ vehicles, drivers, routes, selectedId, setSelectedId, telemetry, mode, reload, vehicleModal, setVehicleModal, driverModal, setDriverModal }: FleetData) {
   const [search, setSearch] = useState('')
+  const [filter, setFilter] = useState<'all' | 'ontrip' | 'attention' | 'available'>('all')
 
-  const filteredVehicles = vehicles.filter((v) =>
-    `${v.registrationNumber} ${v.brand} ${v.model}`.toLowerCase().includes(search.toLowerCase()),
+  const attentionIds = new Set(
+    vehicles
+      .filter((v) => {
+        const t = telemetry.get(v.id)
+        return v.status === 'MAINTENANCE' || v.status === 'INACTIVE' || t?.warning != null
+      })
+      .map((v) => v.id),
   )
+  const countOnTrip = vehicles.filter((v) => v.status === 'ON_TRIP').length
+  const countAvailable = vehicles.filter((v) => v.status === 'ACTIVE').length
+
+  const filteredVehicles = vehicles.filter((v) => {
+    const matchSearch = `${v.registrationNumber} ${v.brand} ${v.model}`.toLowerCase().includes(search.toLowerCase())
+    const t = telemetry.get(v.id)
+    const matchFilter =
+      filter === 'all' ||
+      (filter === 'ontrip' && v.status === 'ON_TRIP') ||
+      (filter === 'attention' && attentionIds.has(v.id)) ||
+      (filter === 'available' && v.status === 'ACTIVE' && t?.warning == null)
+    return matchSearch && matchFilter
+  })
   const filteredDrivers = drivers.filter((d) => d.fullName.toLowerCase().includes(search.toLowerCase()))
 
   return (
@@ -108,6 +86,26 @@ function DesktopLayout({ vehicles, drivers, routes, selectedId, setSelectedId, t
           placeholder="🔍  Поиск по госномеру или имени…"
           className="h-9 rounded-lg bg-automind-bg px-3 text-[12px] outline-none placeholder:text-automind-gray"
         />
+        <div className="flex flex-wrap gap-1.5">
+          {([
+            ['all', `Все (${vehicles.length})`],
+            ['ontrip', `В рейсе (${countOnTrip})`],
+            ['attention', `Внимание (${attentionIds.size})`],
+            ['available', `Свободны (${countAvailable})`],
+          ] as const).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setFilter(key)}
+              className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                filter === key
+                  ? 'bg-automind-dark text-white'
+                  : 'bg-automind-bg text-automind-gray hover:text-automind-ink'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <div className="flex flex-1 flex-col gap-1 overflow-y-auto">
           {filteredVehicles.map((v) => (
             <button
@@ -117,11 +115,14 @@ function DesktopLayout({ vehicles, drivers, routes, selectedId, setSelectedId, t
                 selectedId === v.id ? 'bg-automind-accent/25 ring-1 ring-automind-accent' : 'hover:bg-automind-bg'
               }`}
             >
-              <div>
-                <p className="text-[13px] font-medium">{v.registrationNumber}</p>
-                <p className="text-[10px] text-automind-gray">
-                  {v.brand} {v.model} · {v.driver ? v.driver.fullName : 'без водителя'}
-                </p>
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="text-[17px]">{transportIcon(v)}</span>
+                <div className="min-w-0">
+                  <p className="text-[13px] font-medium">{v.registrationNumber}</p>
+                  <p className="truncate text-[10px] text-automind-gray">
+                    {v.driver ? v.driver.fullName : 'без водителя'}
+                  </p>
+                </div>
               </div>
               <span className="size-2 shrink-0 rounded-full" style={{ background: statusColor[v.status] }} />
             </button>
@@ -408,38 +409,6 @@ function MobileNavigatorLayout({ vehicles, drivers, routes, selectedId, setSelec
 // ============================================================================
 // КАРТА (общая)
 // ============================================================================
-
-function MapView({ vehicles, routes, telemetry, selectedId, onSelect }: {
-  vehicles: Vehicle[]
-  routes: { vehicleId: number; points: RoutePoint[]; name: string }[]
-  telemetry: Map<number, import('../api/types').Telemetry>
-  selectedId: number | null
-  onSelect: (id: number) => void
-}) {
-  const yandexKey = import.meta.env.VITE_YANDEX_MAPS_KEY as string | undefined
-  const [mapFailed, setMapFailed] = useState(false)
-  if (yandexKey && !mapFailed) {
-    return (
-      <YandexMap
-        vehicles={vehicles}
-        routes={routes}
-        telemetry={telemetry}
-        selectedId={selectedId}
-        onSelect={onSelect}
-        onFail={() => setMapFailed(true)}
-      />
-    )
-  }
-  return (
-    <FleetMap
-      vehicles={vehicles}
-      routes={routes}
-      telemetry={telemetry}
-      selectedId={selectedId}
-      onSelect={onSelect}
-    />
-  )
-}
 
 function StreamBadge({ mode, compact }: { mode: string; compact?: boolean }) {
   const color = mode === 'websocket' ? 'bg-automind-status-green' : mode === 'polling' ? 'bg-automind-warn' : 'bg-automind-gray'

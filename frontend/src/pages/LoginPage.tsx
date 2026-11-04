@@ -27,7 +27,8 @@ export function LoginPage({ onLogin }: { onLogin: (user: AuthUser) => void }) {
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-[420px] rounded-2xl bg-white p-9 shadow-sm">
+      <div className="w-full max-w-[420px] overflow-hidden rounded-2xl bg-white shadow-sm">
+        <div className="h-2 w-full bg-automind-accent" />
         <div className="mb-5 flex items-center gap-2.5">
           <span className="flex size-9 items-center justify-center rounded-lg bg-automind-dark text-lg font-bold text-automind-accent">
             A

@@ -205,7 +205,7 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
 function Stat({ label, value, accent }: { label: string; value: string | number; accent?: 'warn' | 'red' }) {
   const color = accent === 'red' ? 'text-automind-red' : accent === 'warn' ? 'text-automind-warn' : 'text-automind-ink'
   return (
-    <div className="rounded-lg bg-automind-bg px-2 py-1.5">
+    <div className="rounded-lg bg-automind-accent/15 px-2 py-1.5">
       <p className="text-[8px] uppercase tracking-wider text-automind-gray">{label}</p>
       <p className={`text-[12px] font-semibold ${color}`}>{value}</p>
     </div>

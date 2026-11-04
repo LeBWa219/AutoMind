@@ -4,7 +4,24 @@ import { fleetApi } from '../api/fleet'
 import { FUEL_TYPES, VEHICLE_STATUSES, type Driver, type Vehicle } from '../api/types'
 
 const inputCls =
-  'h-10 w-full rounded-lg border border-automind-gray/40 bg-white px-3 text-[13px] outline-none focus:border-automind-dark'
+  'h-10 w-full rounded-lg border bg-white px-3 text-[13px] outline-none transition-colors focus:border-automind-dark'
+const inputOk = 'border-automind-gray/40'
+const inputErr = 'border-automind-red'
+
+/** Правила валидации автомобиля (ТЗ 4.4): обязательные поля и форматы. */
+const vehicleRules: Record<string, (v: string) => string | undefined> = {
+  registrationNumber: (v) => (!v.trim() ? 'Укажите госномер' : undefined),
+  vin: (v) => (!v.trim() ? 'Укажите VIN' : v.trim().length < 10 ? 'VIN должен содержать не менее 10 символов' : undefined),
+  brand: (v) => (!v.trim() ? 'Укажите марку' : undefined),
+  model: (v) => (!v.trim() ? 'Укажите модель' : undefined),
+  fuelConsumptionRate: (v) =>
+    v === '' ? 'Укажите средний расход' : Number(v.replace(',', '.')) <= 0 ? 'Расход должен быть больше нуля' : undefined,
+  loadCapacity: (v) =>
+    v === '' ? 'Укажите грузоподъёмность' : Number(v.replace(',', '.')) < 0 ? 'Не может быть отрицательной' : undefined,
+  productionYear: (v) =>
+    v && (Number(v) < 1990 || Number(v) > new Date().getFullYear() + 1) ? 'Некорректный год выпуска' : undefined,
+  mileage: (v) => (v && Number(v.replace(',', '.')) < 0 ? 'Пробег не может быть отрицательным' : undefined),
+}
 
 /** Модальная форма добавления/редактирования автомобиля (ТЗ 4.4). */
 export function VehicleFormModal({
@@ -31,8 +48,19 @@ export function VehicleFormModal({
     status: 'ACTIVE',
     driverId: '',
   })
+  const [errors, setErrors] = useState<Record<string, string>>({})
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+
+  const err = (key: string): string | undefined => errors[key]
+  const blurField = (key: string) => {
+    const value = (form as Record<string, string>)[key] ?? ''
+    const msg = vehicleRules[key]?.(value)
+    setErrors((prev) => ({ ...prev, [key]: msg ?? '' }))
+    if (!msg) setErrors((prev) => {
+      const n = { ...prev }; delete n[key]; return n
+    })
+  }
 
   useEffect(() => {
     if (vehicle) {
@@ -57,6 +85,18 @@ export function VehicleFormModal({
   async function submit(e: FormEvent) {
     e.preventDefault()
     if (busy) return
+    // валидация всех обязательных полей перед отправкой (ТЗ 4.4)
+    const newErrors: Record<string, string> = {}
+    for (const [key, rule] of Object.entries(vehicleRules)) {
+      const value = (form as Record<string, string>)[key] ?? ''
+      const msg = rule(value)
+      if (msg) newErrors[key] = msg
+    }
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors)
+      setError('Заполните обязательные поля — они отмечены *')
+      return
+    }
     setBusy(true)
     setError(null)
     const payload = {
@@ -107,11 +147,11 @@ export function VehicleFormModal({
           </button>
         </div>
         <form onSubmit={submit} className="grid grid-cols-1 gap-3.5 sm:grid-cols-2" noValidate>
-          <Field label="Госномер *" value={form.registrationNumber} onChange={set('registrationNumber')} />
-          <Field label="VIN *" value={form.vin} onChange={set('vin')} />
-          <Field label="Марка *" value={form.brand} onChange={set('brand')} />
-          <Field label="Модель *" value={form.model} onChange={set('model')} />
-          <Field label="Год выпуска" value={form.productionYear} onChange={set('productionYear')} type="number" />
+          <Field label="Госномер *" value={form.registrationNumber} onChange={set('registrationNumber')} onBlur={() => blurField('registrationNumber')} error={err('registrationNumber')} />
+          <Field label="VIN *" value={form.vin} onChange={set('vin')} onBlur={() => blurField('vin')} error={err('vin')} />
+          <Field label="Марка *" value={form.brand} onChange={set('brand')} onBlur={() => blurField('brand')} error={err('brand')} />
+          <Field label="Модель *" value={form.model} onChange={set('model')} onBlur={() => blurField('model')} error={err('model')} />
+          <Field label="Год выпуска" value={form.productionYear} onChange={set('productionYear')} onBlur={() => blurField('productionYear')} error={err('productionYear')} type="number" />
           <Select label="Тип топлива" value={form.fuelType} onChange={set('fuelType')} options={FUEL_TYPES} />
           <Field
             label="Средний расход, л/100 км *"
@@ -167,17 +207,32 @@ function Field({
   label,
   value,
   onChange,
+  onBlur,
+  error,
   type = 'text',
 }: {
   label: string
   value: string
   onChange: (v: string) => void
+  onBlur?: () => void
+  error?: string
   type?: string
 }) {
+  const required = label.includes('*')
   return (
     <label className="block">
-      <span className="mb-1 block text-[12px] font-medium">{label}</span>
-      <input type={type} value={value} onChange={(e) => onChange(e.target.value)} className={inputCls} />
+      <span className="mb-1 block text-[12px] font-medium">
+        {label.replace(' *', '')}
+        {required && <span className="font-bold text-automind-warn"> *</span>}
+      </span>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={onBlur}
+        className={`${inputCls} ${error ? inputErr : inputOk}`}
+      />
+      {error && <span className="mt-1 block text-[11px] text-automind-red">{error}</span>}
     </label>
   )
 }

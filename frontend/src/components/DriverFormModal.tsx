@@ -4,7 +4,23 @@ import { fleetApi } from '../api/fleet'
 import { DRIVER_STATUSES, type Driver } from '../api/types'
 import { Select } from './VehicleFormModal'
 
-/** Модальная форма добавления/редактирования водителя (ТЗ 4.5). */
+/** Правила валидации водителя (ТЗ 4.5): обязательные поля и форматы. */
+const driverRules: Record<string, (v: string) => string | undefined> = {
+  fullName: (v) => (!v.trim() ? 'Укажите ФИО' : undefined),
+  phone: (v) =>
+    !v.trim() ? 'Укажите телефон' : v.replace(/\D/g, '').length < 10 ? 'Телефон: не менее 10 цифр' : undefined,
+  licenseNumber: (v) => (!v.trim() ? 'Укажите номер удостоверения' : undefined),
+  licenseCategory: (v) => (!v.trim() ? 'Укажите категорию ВУ' : undefined),
+  experienceYears: (v) => (v && Number(v) < 0 ? 'Стаж не может быть отрицательным' : undefined),
+}
+
+const inputCls =
+  'h-10 w-full rounded-lg border px-3 text-[13px] outline-none transition-colors focus:border-automind-dark'
+const inputOk = 'border-automind-gray/40'
+const inputErr = 'border-automind-red'
+
+/** Модальная форма добавления/редактирования водителя (ТЗ 4.5):
+ *  обязательные поля отмечены, валидация при потере фокуса и отправке. */
 export function DriverFormModal({
   driver,
   onClose,
@@ -23,6 +39,7 @@ export function DriverFormModal({
     employmentDate: '',
     status: 'AVAILABLE',
   })
+  const [errors, setErrors] = useState<Record<string, string>>({})
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -40,11 +57,41 @@ export function DriverFormModal({
     }
   }, [driver])
 
-  const set = (key: keyof typeof form) => (value: string) => setForm((f) => ({ ...f, [key]: value }))
+  const set = (key: keyof typeof form) => (value: string) => {
+    setForm((f) => ({ ...f, [key]: value }))
+    setErrors((prev) => {
+      if (!prev[key]) return prev
+      const next = { ...prev }
+      delete next[key]
+      return next
+    })
+  }
+  const blurField = (key: string) => {
+    const msg = driverRules[key]?.((form as Record<string, string>)[key] ?? '')
+    setErrors((prev) => {
+      const next = { ...prev }
+      if (msg) next[key] = msg
+      else delete next[key]
+      return next
+    })
+  }
+  const err = (key: string): string | undefined => errors[key]
+  const borderCls = (key: string) => (errors[key] ? inputErr : inputOk)
 
   async function submit(e: FormEvent) {
     e.preventDefault()
     if (busy) return
+    const newErrors: Record<string, string> = {}
+    for (const [key, rule] of Object.entries(driverRules)) {
+      const value = (form as Record<string, string>)[key] ?? ''
+      const msg = rule(value)
+      if (msg) newErrors[key] = msg
+    }
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors)
+      setError('Заполните обязательные поля — они отмечены *')
+      return
+    }
     setBusy(true)
     setError(null)
     const payload = {
@@ -70,32 +117,40 @@ export function DriverFormModal({
 
   return (
     <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-automind-ink/50 p-4">
-      <div className="w-full max-w-[560px] rounded-2xl bg-white p-6 shadow-lg">
+      <div className="max-h-[92vh] w-full max-w-[560px] overflow-y-auto rounded-2xl bg-white p-6 shadow-lg">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-[16px] font-semibold">{driver ? 'Редактирование водителя' : 'Добавление водителя'}</h2>
           <button onClick={onClose} className="text-automind-gray hover:text-automind-ink">
             ✕
           </button>
         </div>
-        <form onSubmit={submit} className="grid grid-cols-2 gap-3.5" noValidate>
-          <div className="col-span-2">
+        <form onSubmit={submit} className="grid grid-cols-1 gap-3.5 sm:grid-cols-2" noValidate>
+          <div className="col-span-1 sm:col-span-2">
             <label className="block">
-              <span className="mb-1 block text-[12px] font-medium">ФИО *</span>
+              <span className="mb-1 block text-[12px] font-medium">
+                ФИО <span className="font-bold text-automind-warn">*</span>
+              </span>
               <input
                 value={form.fullName}
                 onChange={(e) => set('fullName')(e.target.value)}
-                className="h-10 w-full rounded-lg border border-automind-gray/40 px-3 text-[13px] outline-none focus:border-automind-dark"
+                onBlur={() => blurField('fullName')}
+                className={`${inputCls} ${borderCls('fullName')}`}
               />
+              {err('fullName') && <span className="mt-1 block text-[11px] text-automind-red">{err('fullName')}</span>}
             </label>
           </div>
           <label className="block">
-            <span className="mb-1 block text-[12px] font-medium">Телефон</span>
+            <span className="mb-1 block text-[12px] font-medium">
+              Телефон <span className="font-bold text-automind-warn">*</span>
+            </span>
             <input
               value={form.phone}
               onChange={(e) => set('phone')(e.target.value)}
+              onBlur={() => blurField('phone')}
               placeholder="+7 (___) ___-__-__"
-              className="h-10 w-full rounded-lg border border-automind-gray/40 px-3 text-[13px] outline-none focus:border-automind-dark"
+              className={`${inputCls} ${borderCls('phone')}`}
             />
+            {err('phone') && <span className="mt-1 block text-[11px] text-automind-red">{err('phone')}</span>}
           </label>
           <label className="block">
             <span className="mb-1 block text-[12px] font-medium">Дата трудоустройства</span>
@@ -103,25 +158,33 @@ export function DriverFormModal({
               type="date"
               value={form.employmentDate}
               onChange={(e) => set('employmentDate')(e.target.value)}
-              className="h-10 w-full rounded-lg border border-automind-gray/40 px-3 text-[13px] outline-none focus:border-automind-dark"
+              className={`${inputCls} ${inputOk}`}
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-[12px] font-medium">Номер удостоверения</span>
+            <span className="mb-1 block text-[12px] font-medium">
+              Номер удостоверения <span className="font-bold text-automind-warn">*</span>
+            </span>
             <input
               value={form.licenseNumber}
               onChange={(e) => set('licenseNumber')(e.target.value)}
-              className="h-10 w-full rounded-lg border border-automind-gray/40 px-3 text-[13px] outline-none focus:border-automind-dark"
+              onBlur={() => blurField('licenseNumber')}
+              className={`${inputCls} ${borderCls('licenseNumber')}`}
             />
+            {err('licenseNumber') && <span className="mt-1 block text-[11px] text-automind-red">{err('licenseNumber')}</span>}
           </label>
           <label className="block">
-            <span className="mb-1 block text-[12px] font-medium">Категория ВУ</span>
+            <span className="mb-1 block text-[12px] font-medium">
+              Категория ВУ <span className="font-bold text-automind-warn">*</span>
+            </span>
             <input
               value={form.licenseCategory}
               onChange={(e) => set('licenseCategory')(e.target.value)}
+              onBlur={() => blurField('licenseCategory')}
               placeholder="C, CE"
-              className="h-10 w-full rounded-lg border border-automind-gray/40 px-3 text-[13px] outline-none focus:border-automind-dark"
+              className={`${inputCls} ${borderCls('licenseCategory')}`}
             />
+            {err('licenseCategory') && <span className="mt-1 block text-[11px] text-automind-red">{err('licenseCategory')}</span>}
           </label>
           <label className="block">
             <span className="mb-1 block text-[12px] font-medium">Стаж, лет</span>
@@ -129,8 +192,10 @@ export function DriverFormModal({
               type="number"
               value={form.experienceYears}
               onChange={(e) => set('experienceYears')(e.target.value)}
-              className="h-10 w-full rounded-lg border border-automind-gray/40 px-3 text-[13px] outline-none focus:border-automind-dark"
+              onBlur={() => blurField('experienceYears')}
+              className={`${inputCls} ${borderCls('experienceYears')}`}
             />
+            {err('experienceYears') && <span className="mt-1 block text-[11px] text-automind-red">{err('experienceYears')}</span>}
           </label>
           <Select
             label="Статус"

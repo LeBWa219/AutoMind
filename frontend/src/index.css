@@ -31,7 +31,8 @@
   --color-automind-dark: #174d35; /* тёмно-зелёный — навигация, кнопки */
   --color-automind-ink: #171c19; /* почти чёрный — текст */
   --color-automind-warn: #e6a23c; /* предупреждения, экономика */
-  --color-automind-bg: #f5f7f4; /* основной фон */
+  --color-automind-bg: #eef4ea; /* светло-зелёный фон страницы */
+  --color-automind-tint: #f7fbf5; /* едва заметный зелёный для карточек */
   --color-automind-gray: #8a948d; /* второстепенное */
   --color-automind-red: #d9534f; /* критично (решение п.7) */
   --color-automind-status-green: #4e9b54; /* штатная работа */
@@ -41,6 +42,20 @@
 body {
   @apply bg-automind-bg text-automind-ink antialiased;
   font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+}
+
+/* Заголовок секции: зелёная полоса-акцент слева */
+.section-header {
+  @apply mb-3 flex items-center gap-2.5;
+}
+.section-header::before {
+  content: "";
+  @apply h-4 w-1 rounded-full bg-automind-accent;
+}
+
+/* Акцентное число (оранжевый — ключевые показатели) */
+.stat-accent {
+  @apply font-bold text-automind-warn;
 }
 
 /* Маркеры-иконки транспорта на Яндекс Картах (стиль навигатора) */

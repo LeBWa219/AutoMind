@@ -317,7 +317,7 @@ function CandidateRow({
 
 function Kpi({ title, value, hint }: { title: string; value: string; hint: string }) {
   return (
-    <div className="rounded-xl bg-white p-4 shadow-sm">
+    <div className="rounded-xl border-t-2 border-automind-accent bg-white p-4 shadow-sm">
       <p className="text-[11px] text-automind-gray">{title}</p>
       <p className="mt-0.5 truncate text-[20px] font-bold">{value}</p>
       <p className="truncate text-[10px] text-automind-gray">{hint}</p>

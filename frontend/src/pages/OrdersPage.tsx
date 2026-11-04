@@ -76,8 +76,8 @@ export function OrdersPage({
                   {o.origin} → {o.destination}
                 </td>
                 <td className="px-3 py-2.5 text-right">{o.loadedDistance + o.emptyDistance}</td>
-                <td className="px-3 py-2.5 text-right font-medium">{fmtMoney(o.revenue)}</td>
-                <td className="px-3 py-2.5 text-right font-medium">{o.bestProfit != null ? fmtMoney(o.bestProfit) : '—'}</td>
+                <td className="px-3 py-2.5 text-right font-semibold">{fmtMoney(o.revenue)}</td>
+                <td className="px-3 py-2.5 text-right font-semibold text-automind-warn">{o.bestProfit != null ? fmtMoney(o.bestProfit) : '—'}</td>
                 <td className="px-3 py-2.5">
                   <span
                     className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${STATUS_CHIP[o.status].bg} ${STATUS_CHIP[o.status].text}`}

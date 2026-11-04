@@ -3,12 +3,13 @@ import type { FormEvent } from 'react'
 import { ordersApi, CARGO_TYPES } from '../api/orders'
 
 const inputCls =
-  'h-10 w-full rounded-lg border border-automind-gray/40 bg-white px-3 text-[13px] outline-none focus:border-automind-dark'
+  'h-10 w-full rounded-lg border bg-white px-3 text-[13px] outline-none transition-colors focus:border-automind-dark'
+const inputOk = 'border-automind-gray/40'
+const inputErr = 'border-automind-red'
 
-/**
- * Форма создания заказа (ТЗ 5.3). Экономические параметры по умолчанию
- * загружаются из настроек компании. Пустое поле не считается нулём (ТЗ 5.3.3).
- */
+/** Создание заказа (ТЗ 5.3). Валидация каждого блока, обязательные поля
+ *  выделены сразу: оранжевая звёздочка + красная рамка при ошибке.
+ *  Пустое поле не считается нулём (ТЗ 5.3.3). */
 export function OrderFormPage({
   onCreated,
   onCancel,
@@ -39,17 +40,13 @@ export function OrderFormPage({
     tollCost: '',
     otherCost: '',
   })
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [serverErrors, setServerErrors] = useState<Record<string, string>>({})
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
-    fleetSettings()
-  }, [])
-
-  async function fleetSettings() {
-    try {
-      const s = await ordersApi.economicSettings()
+    ordersApi.economicSettings().then((s) => {
       setEcon({
         fuelPrice: String(s.fuelPrice),
         driverHourlyRate: String(s.driverHourlyRate),
@@ -58,44 +55,93 @@ export function OrderFormPage({
         tollCost: String(s.tollCost),
         otherCost: String(s.otherCost),
       })
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Ошибка загрузки настроек')
-    }
+    }).catch((e) => setError(e instanceof Error ? e.message : 'Ошибка загрузки настроек'))
+  }, [])
+
+  const setFormValue = (key: keyof typeof form) => (value: string | boolean) => {
+    setForm((f) => ({ ...f, [key]: value }))
+    setErrors((prev) => {
+      if (!prev[key]) return prev
+      const next = { ...prev }
+      delete next[key]
+      return next
+    })
+  }
+  const setEconValue = (key: keyof typeof econ) => (value: string) => {
+    setEcon((f) => ({ ...f, [key]: value }))
+    setErrors((prev) => {
+      if (!prev[key]) return prev
+      const next = { ...prev }
+      delete next[key]
+      return next
+    })
+  }
+  const blurField = (key: string) => {
+    setErrors((prev) => ({ ...prev, [key]: fieldRules[key]?.(form, econ) ?? prev[key] }))
   }
 
-  const set = (key: keyof typeof form) => (value: string | boolean) =>
-    setForm((f) => ({ ...f, [key]: value }))
+  // Правила валидации каждого поля (ТЗ 5.4)
+  const fieldRules: Record<string, (f: typeof form, e: typeof econ) => string | undefined> = {
+    orderName: (f) => (!f.orderName.trim() ? 'Укажите название заказа' : undefined),
+    cargoWeight: (f) =>
+      !f.cargoWeight ? 'Укажите массу груза' : Number(f.cargoWeight) <= 0 ? 'Масса груза должна быть больше нуля' : undefined,
+    loadedDistance: (f) =>
+      !f.loadedDistance ? 'Не указано расстояние маршрута' : Number(f.loadedDistance) <= 0 ? 'Расстояние должно быть больше нуля' : undefined,
+    emptyDistance: (f) =>
+      f.emptyDistance === '' ? 'Укажите порожний пробег или 0' : Number(f.emptyDistance) < 0 ? 'Пробег не может быть отрицательным' : undefined,
+    plannedDuration: (f) =>
+      !f.plannedDuration ? 'Укажите плановое время' : Number(f.plannedDuration) <= 0 ? 'Время должно быть больше нуля' : undefined,
+    revenue: (f) =>
+      !f.revenue ? 'Укажите стоимость перевозки' : Number(f.revenue) <= 0 ? 'Стоимость перевозки должна быть больше нуля' : undefined,
+    fuelPrice: (_f, e) =>
+      e.fuelPrice === '' ? 'Не задана стоимость топлива' : Number(e.fuelPrice) <= 0 ? 'Стоимость топлива должна быть больше нуля' : undefined,
+    driverHourlyRate: (_f, e) =>
+      e.driverHourlyRate === '' ? 'Заполните оплату труда или укажите 0' : Number(e.driverHourlyRate) < 0 ? 'Не может быть отрицательной' : undefined,
+    maintenanceRate: (_f, e) =>
+      e.maintenanceRate === '' ? 'Заполните стоимость обслуживания или укажите 0' : Number(e.maintenanceRate) < 0 ? 'Не может быть отрицательной' : undefined,
+    additionalCost: (_f, e) =>
+      e.additionalCost === '' ? 'Заполните дополнительные расходы или укажите 0' : Number(e.additionalCost) < 0 ? 'Не могут быть отрицательными' : undefined,
+    tollCost: (_f, e) =>
+      e.tollCost === '' ? 'Укажите стоимость платных дорог или 0' : Number(e.tollCost) < 0 ? 'Не может быть отрицательной' : undefined,
+    otherCost: (_f, e) =>
+      e.otherCost === '' ? 'Укажите прочие расходы или 0' : Number(e.otherCost) < 0 ? 'Не могут быть отрицательными' : undefined,
+    origin: (f) => (!f.origin.trim() ? 'Укажите начальный адрес' : undefined),
+    destination: (f) => (!f.destination.trim() ? 'Укажите конечный адрес' : undefined),
+  }
 
-  function validate(): string | null {
-    if (!form.orderName.trim()) return 'Укажите название заказа'
-    if (!form.cargoWeight || Number(form.cargoWeight) <= 0) return 'Масса груза должна быть больше нуля'
-    if (!form.loadedDistance || Number(form.loadedDistance) <= 0) return 'Не указано расстояние маршрута'
-    if (!form.plannedDuration || Number(form.plannedDuration) <= 0) return 'Укажите плановое время рейса'
-    if (form.revenue === '' || Number(form.revenue) <= 0) return 'Укажите стоимость перевозки'
-    for (const [key, label] of [
-      ['fuelPrice', 'Не задана стоимость топлива'],
-      ['driverHourlyRate', 'Заполните оплату труда водителя или укажите 0'],
-      ['maintenanceRate', 'Заполните стоимость обслуживания или укажите 0'],
-      ['additionalCost', 'Заполните дополнительные расходы или укажите 0'],
-      ['tollCost', 'Заполните стоимость платных дорог или укажите 0'],
-      ['otherCost', 'Заполните прочие расходы или укажите 0'],
-    ] as const) {
-      if (econ[key] === '') return label
+  function validateAll(): Record<string, string> {
+    const errs: Record<string, string> = {}
+    for (const [key, rule] of Object.entries(fieldRules)) {
+      const msg = rule(form, econ)
+      if (msg) errs[key] = msg
     }
-    return null
+    return errs
+  }
+
+  // Ошибки по блокам — для бейджей в заголовках секций
+  const sectionErrors: Record<string, number> = {}
+  for (const key of ['orderName', 'cargoWeight']) {
+    if (errors[key]) sectionErrors.cargo = (sectionErrors.cargo ?? 0) + 1
+  }
+  for (const key of ['origin', 'destination', 'loadedDistance', 'emptyDistance', 'plannedDuration']) {
+    if (errors[key]) sectionErrors.route = (sectionErrors.route ?? 0) + 1
+  }
+  for (const key of ['revenue', 'fuelPrice', 'driverHourlyRate', 'maintenanceRate', 'additionalCost', 'tollCost', 'otherCost']) {
+    if (errors[key]) sectionErrors.economics = (sectionErrors.economics ?? 0) + 1
   }
 
   async function submit(e: FormEvent) {
     e.preventDefault()
     if (busy) return
-    const validationError = validate()
-    if (validationError) {
-      setError(validationError)
+    const clientErrs = validateAll()
+    setErrors(clientErrs)
+    setServerErrors({})
+    if (Object.keys(clientErrs).length > 0) {
+      setError('Исправьте ошибки в форме — расчёт не запускается при некорректных данных (ТЗ 5.4)')
       return
     }
     setBusy(true)
     setError(null)
-    setFieldErrors({})
     const num = (v: string) => Number(String(v).replace(',', '.'))
     try {
       const order = await ordersApi.create({
@@ -125,7 +171,9 @@ export function OrderFormPage({
     } catch (err) {
       const apiErr = err as Error & { fieldErrors?: { field: string; message: string }[] }
       if (apiErr.fieldErrors && apiErr.fieldErrors.length > 0) {
-        setFieldErrors(Object.fromEntries(apiErr.fieldErrors.map((f) => [f.field, f.message])))
+        const merged = apiErr.fieldErrors.reduce<Record<string, string>>((acc, f) => ({ ...acc, [f.field]: f.message }), {})
+        setErrors(merged)
+        setServerErrors(merged)
         setError('Проверьте заполнение полей')
       } else {
         setError(apiErr.message)
@@ -135,209 +183,143 @@ export function OrderFormPage({
     }
   }
 
+  const err = (key: string): string | undefined => errors[key] ?? serverErrors[key] ?? undefined
+  const borderCls = (key: string) => (err(key) ? inputErr : inputOk)
+
   return (
     <main className="mx-auto max-w-[1100px] px-4 py-6 sm:px-8 sm:py-7">
       <button onClick={onCancel} className="text-[12px] text-automind-gray hover:text-automind-ink">
         ← К списку заказов
       </button>
-      <h1 className="mt-2 text-2xl font-semibold">Создание заказа</h1>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-2xl font-semibold">Создание заказа</h1>
+        <p className="text-[12px] text-automind-gray">
+          <span className="font-bold text-automind-warn">*</span> — обязательные поля, расчёт без них не запускается (ТЗ 5.4)
+        </p>
+      </div>
 
       <form onSubmit={submit} className="mt-5 flex flex-col gap-4" noValidate>
-        {/* 5.3.1 Основная информация */}
+        {/* Блок 1: основная информация */}
         <section className="rounded-xl bg-white p-5 shadow-sm">
-          <h2 className="text-[15px] font-semibold">Основная информация</h2>
-          <p className="mt-0.5 text-[11px] text-automind-gray">Поля со звёздочкой обязательны (ТЗ 5.3.1)</p>
-          <div className="mt-4 grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-            <Labeled label="Название заказа *">
-              <input value={form.orderName} onChange={(e) => set('orderName')(e.target.value)} className={inputCls} />
-            </Labeled>
-            <Labeled label="Тип груза *">
-              <select value={form.cargoType} onChange={(e) => set('cargoType')(e.target.value)} className={inputCls}>
+          <div className="section-header">
+            <h2 className="text-[15px] font-semibold">Основная информация</h2>
+            {(sectionErrors.cargo ?? 0) > 0 && (
+              <span className="rounded-full bg-automind-red/10 px-2 py-0.5 text-[10px] font-semibold text-automind-red">
+                {sectionErrors.cargo} ошибок(и)
+              </span>
+            )}
+          </div>
+          <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+            <Field label="Название заказа" required error={err('orderName')}>
+              <input value={form.orderName} onChange={(e) => setFormValue('orderName')(e.target.value)} onBlur={() => blurField('orderName')} className={`${inputCls} ${borderCls('orderName')}`} />
+            </Field>
+            <Field label="Тип груза" required>
+              <select value={form.cargoType} onChange={(e) => setFormValue('cargoType')(e.target.value)} className={`${inputCls} ${inputOk}`}>
                 {Object.entries(CARGO_TYPES).map(([k, v]) => (
-                  <option key={k} value={k}>
-                    {v}
-                  </option>
+                  <option key={k} value={k}>{v}</option>
                 ))}
               </select>
-            </Labeled>
-            <Labeled label="Описание груза">
-              <input
-                value={form.cargoDescription}
-                onChange={(e) => set('cargoDescription')(e.target.value)}
-                className={inputCls}
-              />
-            </Labeled>
-            <Labeled label="Особые условия перевозки">
-              <input
-                value={form.specialConditions}
-                onChange={(e) => set('specialConditions')(e.target.value)}
-                className={inputCls}
-              />
-            </Labeled>
-            <Labeled label="Масса груза, кг *" error={fieldErrors.cargoWeight}>
-              <input
-                type="number"
-                value={form.cargoWeight}
-                onChange={(e) => set('cargoWeight')(e.target.value)}
-                className={inputCls}
-              />
-            </Labeled>
-            <Labeled label="Объём груза, м³">
-              <input
-                type="number"
-                step="0.1"
-                value={form.cargoVolume}
-                onChange={(e) => set('cargoVolume')(e.target.value)}
-                className={inputCls}
-              />
-            </Labeled>
-            <label className="col-span-2 flex items-center gap-2.5 py-1">
-              <input
-                type="checkbox"
-                checked={form.isFragile}
-                onChange={(e) => set('isFragile')(e.target.checked)}
-                className="size-4 accent-[#174d35]"
-              />
-              <span className="text-[13px]">Хрупкий груз — повышает вес истории ДТП при выборе водителя</span>
+            </Field>
+            <Field label="Описание груза">
+              <input value={form.cargoDescription} onChange={(e) => setFormValue('cargoDescription')(e.target.value)} className={`${inputCls} ${inputOk}`} />
+            </Field>
+            <Field label="Особые условия перевозки">
+              <input value={form.specialConditions} onChange={(e) => setFormValue('specialConditions')(e.target.value)} className={`${inputCls} ${inputOk}`} />
+            </Field>
+            <Field label="Масса груза, кг" required error={err('cargoWeight')}>
+              <input type="number" value={form.cargoWeight} onChange={(e) => setFormValue('cargoWeight')(e.target.value)} onBlur={() => blurField('cargoWeight')} className={`${inputCls} ${borderCls('cargoWeight')}`} />
+            </Field>
+            <Field label="Объём груза, м³">
+              <input type="number" step="0.1" value={form.cargoVolume} onChange={(e) => setFormValue('cargoVolume')(e.target.value)} className={`${inputCls} ${inputOk}`} />
+            </Field>
+            <label className="col-span-1 flex items-center gap-2.5 py-1 sm:col-span-2">
+              <input type="checkbox" checked={form.isFragile} onChange={(e) => setFormValue('isFragile')(e.target.checked)} className="size-4 accent-[#E6A23C]" />
+              <span className="text-[13px]">
+                Хрупкий груз — <span className="font-medium text-automind-warn">повышает вес истории ДТП</span> при выборе водителя
+              </span>
             </label>
           </div>
         </section>
 
-        {/* 5.3.2 Маршрут */}
+        {/* Блок 2: маршрут */}
         <section className="rounded-xl bg-white p-5 shadow-sm">
-          <h2 className="text-[15px] font-semibold">Маршрут</h2>
-          <div className="mt-4 grid grid-cols-1 gap-3.5 sm:grid-cols-3">
-            <Labeled label="Начальный адрес *" error={fieldErrors.origin}>
-              <input value={form.origin} onChange={(e) => set('origin')(e.target.value)} className={inputCls} />
-            </Labeled>
-            <Labeled label="Конечный адрес *" error={fieldErrors.destination}>
-              <input
-                value={form.destination}
-                onChange={(e) => set('destination')(e.target.value)}
-                className={inputCls}
-              />
-            </Labeled>
-            <Labeled label="Расстояние с грузом, км *" error={fieldErrors.loadedDistance}>
-              <input
-                type="number"
-                value={form.loadedDistance}
-                onChange={(e) => set('loadedDistance')(e.target.value)}
-                className={inputCls}
-              />
-            </Labeled>
-            <Labeled
-              label="Дополнительный пробег, км *"
-              hint="Порожний пробег и другие перемещения (ТЗ 5.3.2)"
-              error={fieldErrors.emptyDistance}
-            >
-              <input
-                type="number"
-                value={form.emptyDistance}
-                onChange={(e) => set('emptyDistance')(e.target.value)}
-                className={inputCls}
-              />
-            </Labeled>
-            <Labeled label="Плановое время, ч *" error={fieldErrors.plannedDuration}>
-              <input
-                type="number"
-                step="0.5"
-                value={form.plannedDuration}
-                onChange={(e) => set('plannedDuration')(e.target.value)}
-                className={inputCls}
-              />
-            </Labeled>
+          <div className="section-header">
+            <h2 className="text-[15px] font-semibold">Маршрут</h2>
+            {(sectionErrors.route ?? 0) > 0 && (
+              <span className="rounded-full bg-automind-red/10 px-2 py-0.5 text-[10px] font-semibold text-automind-red">
+                {sectionErrors.route} ошибок(и)
+              </span>
+            )}
+          </div>
+          <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
+            <Field label="Начальный адрес" required error={err('origin')}>
+              <input value={form.origin} onChange={(e) => setFormValue('origin')(e.target.value)} onBlur={() => blurField('origin')} className={`${inputCls} ${borderCls('origin')}`} />
+            </Field>
+            <Field label="Конечный адрес" required error={err('destination')}>
+              <input value={form.destination} onChange={(e) => setFormValue('destination')(e.target.value)} onBlur={() => blurField('destination')} className={`${inputCls} ${borderCls('destination')}`} />
+            </Field>
+            <Field label="Расстояние с грузом, км" required error={err('loadedDistance')}>
+              <input type="number" value={form.loadedDistance} onChange={(e) => setFormValue('loadedDistance')(e.target.value)} onBlur={() => blurField('loadedDistance')} className={`${inputCls} ${borderCls('loadedDistance')}`} />
+            </Field>
+            <Field label="Дополнительный пробег, км" required hint="порожние перемещения (ТЗ 5.3.2)" error={err('emptyDistance')}>
+              <input type="number" value={form.emptyDistance} onChange={(e) => setFormValue('emptyDistance')(e.target.value)} onBlur={() => blurField('emptyDistance')} className={`${inputCls} ${borderCls('emptyDistance')}`} />
+            </Field>
+            <Field label="Плановое время, ч" required error={err('plannedDuration')}>
+              <input type="number" step="0.5" value={form.plannedDuration} onChange={(e) => setFormValue('plannedDuration')(e.target.value)} onBlur={() => blurField('plannedDuration')} className={`${inputCls} ${borderCls('plannedDuration')}`} />
+            </Field>
           </div>
         </section>
 
-        {/* 5.3.3 Экономические данные */}
+        {/* Блок 3: экономические данные */}
         <section className="rounded-xl bg-white p-5 shadow-sm">
-          <h2 className="text-[15px] font-semibold">Экономические данные</h2>
+          <div className="section-header">
+            <h2 className="text-[15px] font-semibold">Экономические данные</h2>
+            {(sectionErrors.economics ?? 0) > 0 && (
+              <span className="rounded-full bg-automind-red/10 px-2 py-0.5 text-[10px] font-semibold text-automind-red">
+                {sectionErrors.economics} ошибок(и)
+              </span>
+            )}
+          </div>
           <p className="mt-0.5 text-[11px] text-automind-gray">
-            Загружены из настроек компании, можно скорректировать. Пустое поле не считается нулём —
-            укажите 0 явно, если параметр не применяется (ТЗ 5.3.3).
+            Загружены из настроек компании. <span className="font-medium text-automind-warn">Пустое поле не считается нулём</span> — укажите 0 явно (ТЗ 5.3.3).
           </p>
           <div className="mt-4 grid grid-cols-1 gap-3.5 sm:grid-cols-3">
-            <Labeled label="Выручка за заказ, ₽ *" error={fieldErrors.revenue}>
-              <input
-                type="number"
-                value={form.revenue}
-                onChange={(e) => set('revenue')(e.target.value)}
-                className={`${inputCls} ${fieldErrors.revenue ? 'border-automind-red' : ''}`}
-              />
-            </Labeled>
-            <Labeled label="Стоимость топлива, ₽/л *" error={fieldErrors.fuelPrice}>
-              <input
-                type="number"
-                step="0.01"
-                value={econ.fuelPrice}
-                onChange={(e) => setEcon({ ...econ, fuelPrice: e.target.value })}
-                className={inputCls}
-              />
-            </Labeled>
-            <Labeled label="Оплата труда водителя, ₽/ч *" error={fieldErrors.driverHourlyRate}>
-              <input
-                type="number"
-                step="0.01"
-                value={econ.driverHourlyRate}
-                onChange={(e) => setEcon({ ...econ, driverHourlyRate: e.target.value })}
-                className={inputCls}
-              />
-            </Labeled>
-            <Labeled label="Обслуживание, ₽/км *" error={fieldErrors.maintenanceRate}>
-              <input
-                type="number"
-                step="0.01"
-                value={econ.maintenanceRate}
-                onChange={(e) => setEcon({ ...econ, maintenanceRate: e.target.value })}
-                className={inputCls}
-              />
-            </Labeled>
-            <Labeled label="Дополнительные расходы, ₽ *" error={fieldErrors.additionalCost}>
-              <input
-                type="number"
-                step="0.01"
-                value={econ.additionalCost}
-                onChange={(e) => setEcon({ ...econ, additionalCost: e.target.value })}
-                className={inputCls}
-              />
-            </Labeled>
-            <Labeled label="Платные дороги, ₽ *" error={fieldErrors.tollCost}>
-              <input
-                type="number"
-                step="0.01"
-                value={econ.tollCost}
-                onChange={(e) => setEcon({ ...econ, tollCost: e.target.value })}
-                className={inputCls}
-              />
-            </Labeled>
-            <Labeled label="Прочие расходы, ₽ *" error={fieldErrors.otherCost}>
-              <input
-                type="number"
-                step="0.01"
-                value={econ.otherCost}
-                onChange={(e) => setEcon({ ...econ, otherCost: e.target.value })}
-                className={inputCls}
-              />
-            </Labeled>
+            <Field label="Выручка за заказ, ₽" required error={err('revenue')}>
+              <input type="number" value={form.revenue} onChange={(e) => setFormValue('revenue')(e.target.value)} onBlur={() => blurField('revenue')} className={`${inputCls} ${borderCls('revenue')}`} />
+            </Field>
+            <Field label="Стоимость топлива, ₽/л" required error={err('fuelPrice')}>
+              <input type="number" step="0.01" value={econ.fuelPrice} onChange={(e) => setEconValue('fuelPrice')(e.target.value)} onBlur={() => blurField('fuelPrice')} className={`${inputCls} ${borderCls('fuelPrice')}`} />
+            </Field>
+            <Field label="Оплата труда водителя, ₽/ч" required error={err('driverHourlyRate')}>
+              <input type="number" step="0.01" value={econ.driverHourlyRate} onChange={(e) => setEconValue('driverHourlyRate')(e.target.value)} onBlur={() => blurField('driverHourlyRate')} className={`${inputCls} ${borderCls('driverHourlyRate')}`} />
+            </Field>
+            <Field label="Обслуживание, ₽/км" required error={err('maintenanceRate')}>
+              <input type="number" step="0.01" value={econ.maintenanceRate} onChange={(e) => setEconValue('maintenanceRate')(e.target.value)} onBlur={() => blurField('maintenanceRate')} className={`${inputCls} ${borderCls('maintenanceRate')}`} />
+            </Field>
+            <Field label="Дополнительные расходы, ₽" required error={err('additionalCost')}>
+              <input type="number" step="0.01" value={econ.additionalCost} onChange={(e) => setEconValue('additionalCost')(e.target.value)} onBlur={() => blurField('additionalCost')} className={`${inputCls} ${borderCls('additionalCost')}`} />
+            </Field>
+            <Field label="Платные дороги, ₽" required error={err('tollCost')}>
+              <input type="number" step="0.01" value={econ.tollCost} onChange={(e) => setEconValue('tollCost')(e.target.value)} onBlur={() => blurField('tollCost')} className={`${inputCls} ${borderCls('tollCost')}`} />
+            </Field>
+            <Field label="Прочие расходы, ₽" required error={err('otherCost')}>
+              <input type="number" step="0.01" value={econ.otherCost} onChange={(e) => setEconValue('otherCost')(e.target.value)} onBlur={() => blurField('otherCost')} className={`${inputCls} ${borderCls('otherCost')}`} />
+            </Field>
           </div>
         </section>
 
-        {error && <p className="text-[13px] text-automind-red">{error}</p>}
+        {error && <p className="text-[13px] font-medium text-automind-red">{error}</p>}
 
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex gap-2.5">
             <button
               type="submit"
               disabled={busy}
-              className="rounded-lg bg-automind-dark px-4 py-2.5 text-[13px] font-medium text-white disabled:opacity-40"
+              className="rounded-lg bg-automind-dark px-4 py-2.5 text-[13px] font-medium text-white hover:opacity-90 disabled:opacity-40"
             >
               {busy ? 'Расчёт выполняется…' : 'Рассчитать себестоимость'}
             </button>
-            <button
-              type="button"
-              onClick={onCancel}
-              className="rounded-lg border border-automind-gray/40 px-4 py-2.5 text-[13px] font-medium"
-            >
+            <button type="button" onClick={onCancel} className="rounded-lg border border-automind-gray/40 px-4 py-2.5 text-[13px] font-medium">
               Отмена
             </button>
           </div>
@@ -348,13 +330,11 @@ export function OrderFormPage({
   )
 }
 
-function Labeled({
-  label,
-  hint,
-  error,
-  children,
+function Field({
+  label, required, hint, error, children,
 }: {
   label: string
+  required?: boolean
   hint?: string
   error?: string
   children: React.ReactNode
@@ -362,7 +342,9 @@ function Labeled({
   return (
     <label className="block">
       <span className="mb-1 block text-[12px] font-medium">
-        {label} {hint && <span className="font-normal text-automind-gray">· {hint}</span>}
+        {label}{' '}
+        {required && <span className="font-bold text-automind-warn">*</span>}
+        {hint && <span className="font-normal text-automind-gray"> · {hint}</span>}
       </span>
       {children}
       {error && <span className="mt-1 block text-[11px] text-automind-red">{error}</span>}

@@ -82,7 +82,7 @@ export function CopilotPage({
     <div className="flex h-[calc(100vh-64px)] flex-col lg:flex-row">
       {/* Чат (ТЗ 6.2) */}
       <section className="flex min-w-0 flex-1 flex-col border-b border-automind-gray/20 lg:border-b-0 lg:border-r">
-        <div className="flex items-center justify-between border-b border-automind-gray/20 px-5 py-3.5">
+        <div className="flex items-center justify-between border-b border-automind-dark/10 bg-automind-accent/25 px-5 py-3.5">
           <div>
             <h1 className="text-[16px] font-semibold">AI Logistics Copilot</h1>
             <p className="text-[11px] text-automind-gray">
@@ -150,7 +150,7 @@ export function CopilotPage({
                   key={s}
                   onClick={() => send(s)}
                   disabled={busy}
-                  className="rounded-full border border-automind-gray/30 px-3 py-1.5 text-[11px] text-automind-dark hover:bg-automind-bg disabled:opacity-40"
+                  className="rounded-full border border-automind-warn/50 px-3 py-1.5 text-[11px] text-automind-dark hover:bg-automind-warn/10 disabled:opacity-40"
                 >
                   {s}
                 </button>
@@ -242,7 +242,7 @@ export function CopilotPage({
           </div>
         )}
 
-        <div className="mt-3 rounded-xl bg-automind-accent/15 p-3.5">
+        <div className="mt-3 rounded-xl border border-automind-accent/50 bg-automind-accent/15 p-3.5">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-automind-dark">Как это работает</p>
           <p className="mt-1.5 text-[11px] leading-relaxed">
             Помощник не считает сам: все цифры готовит backend из выполненного расчёта. Заглушка формирует
