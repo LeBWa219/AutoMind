@@ -9,6 +9,7 @@ import { OrderFormPage } from './pages/OrderFormPage'
 import { OrderResultsPage } from './pages/OrderResultsPage'
 import { CopilotPage } from './pages/CopilotPage'
 import { ConsentBanner } from './components/legal/Legal'
+import { Logo } from './components/Logo'
 
 type View = 'home' | 'monitoring' | 'orders' | 'order-form' | 'order-results' | 'copilot'
 
@@ -75,11 +76,8 @@ export default function App() {
         {/* Десктопный топбар */}
         <header className="hidden h-16 items-center justify-between gap-2 border-b border-automind-dark/15 bg-automind-accent px-6 lg:flex">
           <div className="flex items-center gap-6">
-            <button onClick={() => setView('home')} className="flex items-center gap-2.5">
-              <span className="flex size-7 items-center justify-center rounded-lg bg-automind-dark text-sm font-bold text-white">
-                A
-              </span>
-              <span className="text-lg font-semibold text-automind-dark">AutoMind</span>
+            <button onClick={() => setView('home')} className="flex items-center">
+              <Logo size={34} wordmarkSize={21} />
             </button>
             <nav className="flex gap-1">
               {(Object.keys(navLabels) as View[]).map((v) => (
@@ -123,11 +121,8 @@ export default function App() {
             <span className="h-0.5 w-5 rounded bg-automind-ink" />
             <span className="h-0.5 w-5 rounded bg-automind-ink" />
           </button>
-          <button onClick={() => setView('home')} className="flex items-center gap-2">
-            <span className="flex size-7 items-center justify-center rounded-lg bg-automind-dark text-sm font-bold text-white">
-              A
-            </span>
-            <span className="text-[17px] font-semibold text-automind-dark">AutoMind</span>
+          <button onClick={() => setView('home')} className="flex items-center">
+            <Logo size={32} wordmarkSize={19} />
           </button>
           <button
             onClick={() => authApi.logout().then(() => setUser(null))}
@@ -142,11 +137,8 @@ export default function App() {
           <div className="fixed inset-0 z-[1200] lg:hidden">
             <div className="absolute inset-0 bg-automind-ink/50" onClick={() => setMenuOpen(false)} />
             <nav className="absolute inset-y-0 left-0 flex w-[280px] flex-col bg-white shadow-xl">
-              <div className="flex items-center gap-2.5 border-b border-automind-dark/15 bg-automind-accent px-4 py-4">
-                <span className="flex size-8 items-center justify-center rounded-lg bg-automind-dark text-sm font-bold text-white">
-                  A
-                </span>
-                <span className="text-[17px] font-semibold text-automind-dark">AutoMind</span>
+              <div className="flex items-center border-b border-automind-dark/15 bg-automind-accent px-4 py-4">
+                <Logo size={34} wordmarkSize={20} />
               </div>
               <div className="flex-1 overflow-y-auto p-3">
                 {(Object.keys(navLabels) as View[]).map((v) => (

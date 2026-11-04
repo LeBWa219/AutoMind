@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { LegalLinks, LegalModal, type LegalDoc } from '../components/legal/Legal'
+import { Logo } from '../components/Logo'
 import { authApi, type AuthUser } from '../api/auth'
 
 /** Страница входа по коду доступа (ТЗ 3.2). Код проверяется на сервере. */
@@ -29,11 +30,8 @@ export function LoginPage({ onLogin }: { onLogin: (user: AuthUser) => void }) {
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-[420px] overflow-hidden rounded-2xl bg-white shadow-sm">
         <div className="h-2 w-full bg-automind-accent" />
-        <div className="mb-5 flex items-center gap-2.5">
-          <span className="flex size-9 items-center justify-center rounded-lg bg-automind-dark text-lg font-bold text-automind-accent">
-            A
-          </span>
-          <span className="text-[22px] font-semibold">AutoMind</span>
+        <div className="mb-5 flex items-center">
+          <Logo size={40} wordmarkSize={24} />
         </div>
         <h1 className="text-[17px] font-semibold">Вход в систему</h1>
         <p className="mt-1.5 text-[13px] text-automind-gray">
